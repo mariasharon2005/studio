@@ -7,7 +7,8 @@ import {
 } from 'recharts';
 import { 
   Ghost, Leaf, TrendingDown, Cpu, Activity, LogOut, 
-  Bell, Settings, Send, ShieldAlert, Zap, BarChart3, Globe, Trash2, CheckCircle2, AlertTriangle, Loader2, Info
+  Bell, Settings, Send, ShieldAlert, Zap, BarChart3, Globe, Trash2, CheckCircle2, AlertTriangle, Loader2, Info,
+  GitBranch, Play, History, Workflow, CheckCircle, XCircle, RefreshCw
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -69,6 +70,13 @@ export default function Dashboard() {
       variant: 'default' as const,
       isEmergency: false
     }
+  ]);
+
+  const [pipelines, setPipelines] = useState([
+    { id: 'PIPE-001', name: 'PROD DEPLOY', status: 'SUCCESS', delta: '+$42.00', time: '2h ago', type: 'deploy' },
+    { id: 'PIPE-002', name: 'SHADOW SCAN', status: 'SUCCESS', delta: '-$14.50', time: '4h ago', type: 'optimize' },
+    { id: 'PIPE-003', name: 'GPU REBALANCING', status: 'RUNNING', delta: 'PENDING', time: 'Active', type: 'optimize' },
+    { id: 'PIPE-004', name: 'STAGING SYNC', status: 'FAILED', delta: '$0.00', time: '6h ago', type: 'deploy' }
   ]);
 
   const [unitEconomics, setUnitEconomics] = useState({
@@ -144,6 +152,16 @@ export default function Dashboard() {
       title: "OPTIMIZATION COMMENCED",
       description: `Node ${id} transitioning to Spot G2.`,
     });
+  };
+
+  const handleRunPipeline = () => {
+    toast({
+      title: "PIPELINE TRIGGERED",
+      description: "Invoking global FinOps scan...",
+    });
+    // Add a temporary running pipeline
+    const newPipe = { id: `PIPE-${Math.floor(Math.random()*900)+100}`, name: 'MANUAL SCAN', status: 'RUNNING', delta: 'PENDING', time: 'Just now', type: 'optimize' };
+    setPipelines([newPipe, ...pipelines]);
   };
 
   const handleInitiateMigration = () => {
@@ -244,10 +262,11 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <StatCard title="SHADOW LEAKAGE" value={`${shadowResources.length} Units`} icon={<Ghost className="w-5 h-5 text-secondary" />} sub={`SAVE $${shadowResources.reduce((a,b)=>a+b.saving,0).toFixed(2)}/MO`} />
         <StatCard title="UNIT EFFICIENCY" value={`$${unitEconomics.costPerUser}/user`} icon={<BarChart3 className="w-5 h-5 text-blue-400" />} sub={unitEconomics.status} />
-        <StatCard title="GPU OVERHEAD" value={`$${gpuNodes.reduce((a,b)=>a+b.cost, 0).toFixed(2)}/hr`} icon={<Zap className="w-5 h-5 text-yellow-400" />} sub={gpuNodes.some(n=>n.isEmergency) ? "URGENT OPTIMIZATION REQUIRED" : "RESOURCES OPTIMIZED"} />
+        <StatCard title="GPU OVERHEAD" value={`$${gpuNodes.reduce((a,b)=>a+b.cost, 0).toFixed(2)}/hr`} icon={<Zap className="w-5 h-5 text-yellow-400" />} sub={gpuNodes.some(n=>n.isEmergency) ? "URGENT OPTIMIZATION" : "RESOURCES OPTIMIZED"} />
+        <StatCard title="PIPELINE STATUS" value={`${pipelines.filter(p=>p.status === 'RUNNING').length} Active`} icon={<GitBranch className="w-5 h-5 text-purple-400" />} sub="CI/CD COST SENTINEL" />
         <StatCard title="GREEN SCORE" value={`${currentRegion.score}%`} icon={<Leaf className="w-5 h-5 text-primary" />} sub={currentRegion.status} />
       </div>
 
@@ -256,6 +275,7 @@ export default function Dashboard() {
           <TabsTrigger value="overview" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-code text-[10px]">UNIT ECONOMICS</TabsTrigger>
           <TabsTrigger value="shadow" className="data-[state=active]:bg-secondary/10 data-[state=active]:text-secondary font-code text-[10px]">SHADOW SCANNER</TabsTrigger>
           <TabsTrigger value="accelerator" className="data-[state=active]:bg-yellow-500/10 data-[state=active]:text-yellow-500 font-code text-[10px]">GPU SENTINEL</TabsTrigger>
+          <TabsTrigger value="pipelines" className="data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-500 font-code text-[10px]">PIPELINES</TabsTrigger>
           <TabsTrigger value="green" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-code text-[10px]">GREEN OPS</TabsTrigger>
         </TabsList>
 
@@ -398,6 +418,45 @@ export default function Dashboard() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="pipelines" className="animate-in fade-in">
+          <Card className="bg-black/40 border-purple-500/30">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="font-headline text-lg text-purple-500 flex items-center gap-2">
+                <Workflow className="w-5 h-5" /> CI/CD COST SENTINEL
+              </CardTitle>
+              <Button onClick={handleRunPipeline} size="sm" className="bg-purple-600 hover:bg-purple-500 text-white font-code text-[10px]">
+                <Play className="w-3 h-3 mr-2" /> RUN SCAN
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-4">
+                {pipelines.map((pipe) => (
+                  <div key={pipe.id} className="p-4 bg-white/5 border border-white/10 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group hover:border-purple-500/50 transition-all">
+                    <div className="flex items-center gap-4">
+                      <div className={`p-2 rounded bg-opacity-10 ${pipe.status === 'SUCCESS' ? 'bg-primary text-primary' : pipe.status === 'RUNNING' ? 'bg-purple-400 text-purple-400 animate-pulse' : 'bg-destructive text-destructive'}`}>
+                        {pipe.status === 'SUCCESS' ? <CheckCircle className="w-5 h-5" /> : pipe.status === 'RUNNING' ? <RefreshCw className="w-5 h-5 animate-spin" /> : <XCircle className="w-5 h-5" />}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-code text-sm text-white">{pipe.name}</p>
+                          <Badge variant="outline" className="h-3 text-[8px] border-white/20 font-code">{pipe.id}</Badge>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground uppercase">{pipe.type} • {pipe.time}</p>
+                      </div>
+                    </div>
+                    <div className="text-right w-full md:w-auto">
+                      <div className={`font-code text-sm ${pipe.delta.startsWith('+') ? 'text-destructive' : pipe.delta.startsWith('-') ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {pipe.delta}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground uppercase">COST IMPACT</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="green" className="animate-in fade-in duration-500">
           <Card className="bg-black/40 border-primary/30 overflow-hidden">
             <CardHeader>
@@ -488,6 +547,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-1 font-code text-[10px] text-muted-foreground">
             <p><span className="text-primary">[SYSTEM]</span> Kernel v3.0 stable. Unit economics verified.</p>
+            <p><span className="text-purple-400">[PIPELINE]</span> {pipelines.filter(p=>p.status === 'RUNNING').length} active jobs monitoring deployment cost drift.</p>
             <p><span className="text-secondary">[SHADOW]</span> Found {shadowResources.length} orphaned resources costing ${shadowResources.reduce((a,b)=>a+b.saving,0).toFixed(2)}/mo.</p>
             {gpuNodes.some(n=>n.isEmergency) && <p className="text-destructive">[ALERT] GPU utilization critically low (&lt;5%) on {gpuNodes.find(n=>n.isEmergency)?.id}.</p>}
           </CardContent>
