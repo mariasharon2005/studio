@@ -21,6 +21,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useAuth, useUser } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
 const forecastData = [
   { name: 'Mon', cost: 400, carbon: 240, cpu: 0.45 },
@@ -33,6 +35,8 @@ const forecastData = [
 ];
 
 export default function Dashboard() {
+  const { user } = useUser();
+  const auth = useAuth();
   const [isGhostMode, setIsGhostMode] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const { toast } = useToast();
@@ -91,6 +95,18 @@ export default function Dashboard() {
       description: checked ? "Autonomous termination sequence primed." : "Manual control restored.",
       variant: checked ? "default" : "destructive",
     });
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toast({
+        title: "LOGGED OUT",
+        description: "Secure session terminated.",
+      });
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
   };
 
   const purgeResource = (id: string) => {
@@ -170,7 +186,11 @@ export default function Dashboard() {
               </Badge>
             )}
           </div>
-          <p className="font-code text-muted-foreground text-sm tracking-widest uppercase mt-1">Autonomous FinOps Module v3.0</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="font-code text-muted-foreground text-[10px] tracking-widest uppercase">Autonomous FinOps Module v3.0</p>
+            <span className="text-white/20">|</span>
+            <p className="font-code text-primary text-[10px]">{user?.email}</p>
+          </div>
         </div>
         
         <div className="flex gap-4 items-center w-full md:w-auto justify-between md:justify-end">
@@ -213,7 +233,12 @@ export default function Dashboard() {
             </DialogContent>
           </Dialog>
 
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-muted-foreground hover:text-white"
+            onClick={handleLogout}
+          >
             <LogOut className="w-5 h-5" />
           </Button>
         </div>

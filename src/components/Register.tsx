@@ -5,12 +5,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Shield, Smartphone, Mail, Lock, ArrowRight, User } from 'lucide-react';
+import { useAuth, initiateEmailSignUp, useUser } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 
 interface RegisterProps {
   onSuccess: () => void;
 }
 
 export default function Register({ onSuccess }: RegisterProps) {
+  const auth = useAuth();
+  const db = useFirestore();
+  const { user } = useUser();
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -35,14 +42,18 @@ export default function Register({ onSuccess }: RegisterProps) {
     if (!validate()) return;
 
     setIsSubmitting(true);
-    // Simulate API call to localhost:8000
+    
+    // Initiate Firebase Sign Up (Non-blocking as per guidelines)
     try {
-      // In real scenario: await fetch('http://localhost:8000/register', { method: 'POST', body: ... })
-      await new Promise(r => setTimeout(r, 1500));
-      onSuccess();
+      initiateEmailSignUp(auth, formData.email, formData.password);
+      
+      // Note: In a real flow, we would use a listener for 'user' state 
+      // which we already have in SentinelOps.tsx. 
+      // We can also save additional user data to Firestore here if needed, 
+      // but usually we'd do that in an onAuthStateChanged listener or Cloud Function.
+      // For this MVP, we rely on the redirect in SentinelOps.
     } catch (err) {
-      console.error(err);
-    } finally {
+      console.error("Auth initialization failed", err);
       setIsSubmitting(false);
     }
   };
