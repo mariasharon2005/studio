@@ -1,0 +1,159 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user profile in the Sentinel-Ops platform, storing essential registration details.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address, used for login and notifications.",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "User's 10-digit Indian phone number (e.g., '9876543210'), used for contact. The '+91' prefix is typically handled by the UI/backend logic."
+        },
+        "registrationDate": {
+          "type": "string",
+          "description": "Timestamp when the user successfully registered.",
+          "format": "date-time"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The user's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The user's last name."
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "phoneNumber",
+        "registrationDate"
+      ]
+    },
+    "GhostResource": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "GhostResource",
+      "type": "object",
+      "description": "Represents a detected 'ghost resource' (underutilized cloud resource) in the Sentinel-Ops platform, along with its historical metrics and associated user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the GhostResource entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who owns or is responsible for this ghost resource. (Relationship: User 1:N GhostResource)"
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "Identifier of the cloud resource as provided by the cloud provider (e.g., AWS Instance ID, Azure VM ID)."
+        },
+        "resourceName": {
+          "type": "string",
+          "description": "Human-readable name of the cloud resource."
+        },
+        "resourceType": {
+          "type": "string",
+          "description": "Type of the cloud resource (e.g., 'EC2 Instance', 'Azure VM', 'GCP Compute Instance')."
+        },
+        "cloudProvider": {
+          "type": "string",
+          "description": "The cloud provider where this resource is hosted (e.g., 'AWS', 'Azure', 'GCP')."
+        },
+        "region": {
+          "type": "string",
+          "description": "The geographical region where the cloud resource is deployed."
+        },
+        "detectionTimestamp": {
+          "type": "string",
+          "description": "Timestamp when the ghost resource was first detected.",
+          "format": "date-time"
+        },
+        "cpuUtilizationPercentage": {
+          "type": "number",
+          "description": "Average CPU utilization percentage for the resource during the detection period (e.g., '5.0' for 5%)."
+        },
+        "networkIOBytes": {
+          "type": "number",
+          "description": "Average total network I/O in bytes (ingress + egress) for the resource during the detection period."
+        },
+        "recommendedAction": {
+          "type": "string",
+          "description": "Recommended action for the ghost resource, such as 'Terminate', 'Downsize', 'Archive', or 'Monitor'."
+        },
+        "isResolved": {
+          "type": "boolean",
+          "description": "Indicates whether the ghost resource issue has been resolved or remediated."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "resourceId",
+        "resourceType",
+        "cloudProvider",
+        "detectionTimestamp",
+        "cpuUtilizationPercentage",
+        "networkIOBytes",
+        "isResolved"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Represents a user's profile information. Documents in this collection are typically self-owned, meaning 'request.auth.uid' must match 'userId'. The 'id' field within the document will match 'userId'.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, matching 'request.auth.uid'."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/ghost_resources/{ghostResourceId}",
+        "definition": {
+          "entityName": "GhostResource",
+          "schema": {
+            "$ref": "#/backend/entities/GhostResource"
+          },
+          "description": "Represents a detected ghost resource owned by a specific user. Includes denormalized 'userId' for authorization independence, ensuring rules can validate ownership directly from the document's path or its internal data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user who owns this ghost resource."
+            },
+            {
+              "name": "ghostResourceId",
+              "description": "The unique identifier for the specific ghost resource."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure for Sentinel-Ops prioritizes robust security, scalability, and debuggability, adhering strictly to the core design principles and strategy mandates. \n\n**Authorization Independence:** This is achieved primarily through the hierarchical path structure for user-owned data. For `GhostResource` entities, they are stored as a subcollection under the respective `User` document, i.e., `/users/{userId}/ghost_resources/{ghostResourceId}`. While the `GhostResource` entity schema includes a `userId` field, the primary mechanism for authorization independence here is the path itself. Security rules can directly evaluate `request.auth.uid == userId` (where `userId` is the wildcard in the path) to grant or deny access without requiring a `get()` operation on a parent `User` document. This ensures that creating, updating, or deleting a `GhostResource` does not require checking the parent `User` document for ownership, thus preserving atomicity and simplifying rule logic. The explicit `userId` field within the `GhostResource` document serves as an additional, denormalized authorization context for redundancy and clarity.\n\n**QAPs (Rules are not Filters):** The structural segregation and path-based ownership directly support Query Access Patterns (QAPs). \n1. **User Profiles:** `/users/{userId}` ensures that a user can only access their own profile. A `list` query on `/users` would typically be restricted to 'self' (`request.auth.uid == userId`) in rules, making it impossible for a user to query all user profiles. If public profiles were needed, a separate `/public_profiles` collection would be created (Structural Segregation).\n2. **Ghost Resources:** `/users/{userId}/ghost_resources/{ghostResourceId}` enforces that a user can only `list` or `get` ghost resources that belong to them. When a user performs a `list` query on `/users/{request.auth.uid}/ghost_resources`, the `userId` in the path already matches the authenticated user's ID. The security rule then simply confirms this match (`allow read: if request.auth.uid == userId;`), preventing any filtering of data owned by other users. This structure makes it impossible to construct a query that would return ghost resources belonging to multiple users, thereby upholding the QAP principle and ensuring rules are not used as implicit data filters."
+  }
+}

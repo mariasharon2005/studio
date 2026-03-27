@@ -1,0 +1,102 @@
+/**
+ * Sentinel-Ops Firestore Security Rules
+ *
+ * CORE PHILOSOPHY
+ * This ruleset enforces a strict user-ownership model designed for the Sentinel-Ops platform. 
+ * Authorization is derived primarily from the document path hierarchy, ensuring that users 
+ * can only access and manage data explicitly associated with their unique Firebase Auth UID.
+ *
+ * DATA STRUCTURE
+ * The data is organized hierarchically to support Authorization Independence:
+ * - /users/{userId}: Root profile for each authenticated user.
+ * - /users/{userId}/ghost_resources/{ghostResourceId}: Cloud resources identified as 'ghosts' 
+ *   belonging to a specific user.
+ *
+ * KEY SECURITY DECISIONS
+ * 1. Path-Based Authorization: By nesting ghost resources under the user document, we avoid 
+ *    expensive cross-document lookups (get() calls). The {userId} wildcard in the path is 
+ *    matched directly against the authenticated user's UID.
+ * 2. Immutable Ownership: Critical relational fields (like 'userId' or 'id') are enforced 
+ *    during creation and made immutable during updates to prevent data hijacking or 
+ *    orphaned records.
+ * 3. Prototyping Flexibility: While authorization is strictly enforced, the schema (data types 
+ *    and non-relational fields) is kept flexible to allow for rapid iteration and 
+ *    integration of various cloud provider metrics.
+ * 4. No Public Access: All collections are private. Users cannot list other users or 
+ *    access ghost resources that do not belong to them.
+ *
+ * DENORMALIZATION FOR AUTHORIZATION
+ * The 'userId' is denormalized within the GhostResource documents. This serves as a 
+ * secondary integrity check, ensuring the internal data remains consistent with the 
+ * secure path structure.
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+
+    /** @description Checks if the request is from a generic authenticated user. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** @description Checks if the authenticated user matches the provided userId. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** @description Checks ownership and ensures the document exists for state-changing operations. */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for the User profile document.
+     * @path /users/{userId}
+     * @allow (create) If auth.uid matches {userId} and data.id matches {userId}.
+     * @deny (list) If a user attempts to query the entire /users collection.
+     * @principle Enforces self-ownership and prevents user discovery.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false; // Users cannot list other users for privacy.
+      
+      allow create: if isOwner(userId) 
+                    && request.resource.data.id == userId;
+      
+      allow update: if isExistingOwner(userId) 
+                    && request.resource.data.id == resource.data.id;
+      
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Rules for GhostResources associated with a user.
+       * @path /users/{userId}/ghost_resources/{ghostResourceId}
+       * @allow (list) If the user is listing resources under their own path.
+       * @deny (update) If the request tries to change the internal 'userId' field.
+       * @principle Path-based authorization for subcollections with relational integrity.
+       */
+      match /ghost_resources/{ghostResourceId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) 
+                      && request.resource.data.userId == userId;
+
+        allow update: if isExistingOwner(userId) 
+                      && request.resource.data.userId == resource.data.userId;
+
+        allow delete: if isExistingOwner(userId);
+      }
+    }
+
+    // Default deny for any unspecified paths
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
