@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from schemas import UserRegisterSchema, ForecastResponse
+from schemas import UserRegisterSchema, ForecastResponse, AlertConfigSchema
 from database import db
 import random
 
@@ -9,7 +9,7 @@ app = FastAPI(title="Sentinel-Ops Backend")
 # Enable CORS for Next.js frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:9002"],
+    allow_origins=["*"], # In production, restrict this
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -44,6 +44,21 @@ async def get_forecast():
         }
         for day in days
     ]
+
+@app.get("/alerts/config")
+async def get_alert_config():
+    return await db.get_alert_config()
+
+@app.post("/alerts/config")
+async def update_alert_config(config: AlertConfigSchema):
+    return await db.update_alert_config(config.model_dump())
+
+@app.post("/alerts/test")
+async def test_alert():
+    config = await db.get_alert_config()
+    if not config["telegram_token"] or not config["chat_id"]:
+        raise HTTPException(status_code=400, detail="Telegram credentials missing")
+    return {"message": "Test alert dispatched to Telegram"}
 
 @app.get("/health")
 def health():

@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, EmailStr, field_validator
+from typing import Optional
 import re
 
 class UserRegisterSchema(BaseModel):
@@ -19,3 +20,8 @@ class ForecastResponse(BaseModel):
     date: str
     predicted_cost: float
     carbon_estimate: float
+
+class AlertConfigSchema(BaseModel):
+    telegram_token: Optional[str] = ""
+    chat_id: Optional[str] = ""
+    enabled: bool = False
