@@ -33,8 +33,35 @@ const forecastData = [
 export default function Dashboard() {
   const [isGhostMode, setIsGhostMode] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
-  const [isTesting, setIsTesting] = useState(false);
   const { toast } = useToast();
+
+  // State for interactive resources
+  const [shadowResources, setShadowResources] = useState([
+    { id: 'snap-9821x', type: 'Snapshot', saving: 14.50, reason: '180 days idle' },
+    { id: 'eip-0211a', type: 'Elastic IP', saving: 3.60, reason: 'Unattached' },
+    { id: 'vol-5522b', type: 'EBS Volume', saving: 42.00, reason: 'Detached for 14d' }
+  ]);
+
+  const [gpuNodes, setGpuNodes] = useState([
+    { 
+      id: 'gpu-h100-primary', 
+      type: 'NVIDIA H100', 
+      cost: 3.45, 
+      util: 4.2, 
+      status: 'UNDER-UTILIZED', 
+      reco: 'TRANSITION TO SPOT G2',
+      variant: 'destructive' as const
+    },
+    { 
+      id: 'gpu-a100-worker-1', 
+      type: 'NVIDIA A100', 
+      cost: 2.10, 
+      util: 88.0, 
+      status: 'OPTIMAL', 
+      reco: null,
+      variant: 'default' as const
+    }
+  ]);
 
   const handleGhostModeToggle = (checked: boolean) => {
     setIsGhostMode(checked);
@@ -46,12 +73,42 @@ export default function Dashboard() {
   };
 
   const purgeResource = (id: string) => {
+    setShadowResources(prev => prev.filter(item => item.id !== id));
     toast({
       title: "RESOURCE PURGED",
       description: `Target ${id} has been eliminated from infrastructure.`,
       variant: "destructive"
     });
   };
+
+  const keepResource = (id: string) => {
+    setShadowResources(prev => prev.filter(item => item.id !== id));
+    toast({
+      title: "PROTOCOL UPDATED",
+      description: `Target ${id} whitelisted for next 30 days.`,
+    });
+  };
+
+  const optimizeGpuNode = (id: string) => {
+    setGpuNodes(prev => prev.map(node => {
+      if (node.id === id) {
+        return {
+          ...node,
+          status: 'OPTIMIZED',
+          reco: 'Spot Instance Active',
+          variant: 'default' as const,
+          cost: 1.15 // Reduced cost after optimization
+        };
+      }
+      return node;
+    }));
+    toast({
+      title: "OPTIMIZATION COMMENCED",
+      description: `Node ${id} is being transitioned to Spot G2 instance.`,
+    });
+  };
+
+  const totalShadowSavings = shadowResources.reduce((sum, item) => sum + item.saving, 0).toFixed(2);
 
   return (
     <div className={`min-h-screen transition-all duration-700 bg-[#050505] p-6 text-white cyber-grid ${isGhostMode ? 'bg-purple-950/5 shadow-[inset_0_0_100px_rgba(188,19,254,0.1)]' : ''}`}>
@@ -114,9 +171,9 @@ export default function Dashboard() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <StatCard title="SHADOW LEAKAGE" value="3 Units" icon={<Ghost className="w-5 h-5 text-secondary" />} sub="POTENTIAL SAVING: $60.10/mo" />
+        <StatCard title="SHADOW LEAKAGE" value={`${shadowResources.length} Units`} icon={<Ghost className="w-5 h-5 text-secondary" />} sub={`POTENTIAL SAVING: $${totalShadowSavings}/mo`} />
         <StatCard title="UNIT EFFICIENCY" value="0.41 $/user" icon={<BarChart3 className="w-5 h-5 text-blue-400" />} sub="HEALTHY GROWTH DETECTED" />
-        <StatCard title="GPU OVERHEAD" value="$3.45/hr" icon={<Zap className="w-5 h-5 text-yellow-400" />} sub="LOW UTILIZATION IN H100" />
+        <StatCard title="GPU OVERHEAD" value={`$${gpuNodes.find(n => n.id === 'gpu-h100-primary')?.cost.toFixed(2) || '0.00'}/hr`} icon={<Zap className="w-5 h-5 text-yellow-400" />} sub={gpuNodes.some(n => n.status === 'UNDER-UTILIZED') ? "LOW UTILIZATION DETECTED" : "RESOURCES OPTIMIZED"} />
         <StatCard title="GREEN SCORE" value="88%" icon={<Leaf className="w-5 h-5 text-primary" />} sub="CARBON REDUCTION: 142kg" />
       </div>
 
@@ -187,43 +244,51 @@ export default function Dashboard() {
             <CardHeader>
               <CardTitle className="font-headline text-lg text-secondary flex items-center justify-between">
                 ORPHANED INFRASTRUCTURE
-                <Badge variant="outline" className="border-secondary text-secondary">3 GHOSTS FOUND</Badge>
+                <Badge variant="outline" className="border-secondary text-secondary">{shadowResources.length} GHOSTS FOUND</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {[
-                  { id: 'snap-9821x', type: 'Snapshot', saving: 14.50, reason: '180 days idle' },
-                  { id: 'eip-0211a', type: 'Elastic IP', saving: 3.60, reason: 'Unattached' },
-                  { id: 'vol-5522b', type: 'EBS Volume', saving: 42.00, reason: 'Detached for 14d' }
-                ].map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-lg group hover:border-secondary/50 transition-all">
-                    <div className="flex gap-4 items-center">
-                      <div className="p-2 bg-secondary/10 rounded">
-                        <Ghost className="w-5 h-5 text-secondary" />
-                      </div>
-                      <div>
-                        <p className="font-code text-sm text-white">{item.id}</p>
-                        <p className="text-[10px] text-muted-foreground uppercase">{item.type} • {item.reason}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
-                        <p className="text-secondary font-code">Save ${item.saving}/mo</p>
-                        <p className="text-[10px] text-muted-foreground">RECOVERY POTENTIAL</p>
-                      </div>
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="outline" size="sm" className="h-8 border-white/20 text-[10px] font-code hover:bg-white/10">KEEP</Button>
-                        <Button 
-                          onClick={() => purgeResource(item.id)}
-                          variant="destructive" size="sm" className="h-8 text-[10px] font-code bg-secondary hover:bg-secondary/80"
-                        >
-                          KILL <Trash2 className="w-3 h-3 ml-1" />
-                        </Button>
-                      </div>
-                    </div>
+                {shadowResources.length === 0 ? (
+                  <div className="py-12 text-center border border-dashed border-white/10 rounded-lg">
+                    <CheckCircle2 className="w-12 h-12 text-primary mx-auto mb-4 opacity-20" />
+                    <p className="font-code text-muted-foreground uppercase text-xs">Infrastructure Clean: 0 Ghost Resources</p>
                   </div>
-                ))}
+                ) : (
+                  shadowResources.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-lg group hover:border-secondary/50 transition-all">
+                      <div className="flex gap-4 items-center">
+                        <div className="p-2 bg-secondary/10 rounded">
+                          <Ghost className="w-5 h-5 text-secondary" />
+                        </div>
+                        <div>
+                          <p className="font-code text-sm text-white">{item.id}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase">{item.type} • {item.reason}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className="text-right">
+                          <p className="text-secondary font-code">Save ${item.saving.toFixed(2)}/mo</p>
+                          <p className="text-[10px] text-muted-foreground">RECOVERY POTENTIAL</p>
+                        </div>
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button 
+                            onClick={() => keepResource(item.id)}
+                            variant="outline" size="sm" className="h-8 border-white/20 text-[10px] font-code hover:bg-white/10"
+                          >
+                            KEEP
+                          </Button>
+                          <Button 
+                            onClick={() => purgeResource(item.id)}
+                            variant="destructive" size="sm" className="h-8 text-[10px] font-code bg-secondary hover:bg-secondary/80"
+                          >
+                            KILL <Trash2 className="w-3 h-3 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -239,29 +304,47 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="p-4 border border-destructive/30 bg-destructive/5 rounded-lg flex justify-between items-center">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-code text-white">gpu-h100-primary</p>
-                        <Badge variant="destructive" className="h-4 text-[8px] animate-pulse">UNDER-UTILIZED</Badge>
+                  {gpuNodes.map((node) => (
+                    <div 
+                      key={node.id} 
+                      className={`p-4 border rounded-lg flex justify-between items-center transition-all ${
+                        node.status === 'UNDER-UTILIZED' 
+                          ? 'border-destructive/30 bg-destructive/5' 
+                          : 'border-primary/30 bg-primary/5'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-code text-white">{node.id}</p>
+                          <Badge 
+                            variant={node.variant} 
+                            className={`h-4 text-[8px] ${node.status === 'UNDER-UTILIZED' ? 'animate-pulse' : ''} ${node.status === 'OPTIMAL' ? 'bg-primary text-black' : ''}`}
+                          >
+                            {node.status}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">{node.type} • ${node.cost.toFixed(2)}/hr • Util: {node.util.toFixed(1)}%</p>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">NVIDIA H100 • $3.45/hr • Util: 4.2%</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-yellow-500 font-code text-xs">RECO: TRANSITION TO SPOT G2</p>
-                      <Button size="sm" className="mt-2 bg-yellow-600 text-white hover:bg-yellow-500 h-7 text-[10px] font-code">OPTIMIZE NOW</Button>
-                    </div>
-                  </div>
-                  <div className="p-4 border border-primary/30 bg-primary/5 rounded-lg flex justify-between items-center">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-code text-white">gpu-a100-worker-1</p>
-                        <Badge className="h-4 text-[8px] bg-primary text-black">OPTIMAL</Badge>
+                      <div className="text-right">
+                        {node.reco && (
+                          <>
+                            <p className="text-yellow-500 font-code text-[10px] uppercase">RECO: {node.reco}</p>
+                            {node.status === 'UNDER-UTILIZED' && (
+                              <Button 
+                                onClick={() => optimizeGpuNode(node.id)}
+                                size="sm" 
+                                className="mt-2 bg-yellow-600 text-white hover:bg-yellow-500 h-7 text-[10px] font-code"
+                              >
+                                OPTIMIZE NOW
+                              </Button>
+                            )}
+                          </>
+                        )}
+                        {node.status === 'OPTIMAL' && <CheckCircle2 className="w-5 h-5 text-primary ml-auto" />}
+                        {node.status === 'OPTIMIZED' && <CheckCircle2 className="w-5 h-5 text-primary ml-auto" />}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">NVIDIA A100 • $2.10/hr • Util: 88.0%</p>
                     </div>
-                    <CheckCircle2 className="w-5 h-5 text-primary" />
-                  </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -272,16 +355,22 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1">
-                  <p className="text-2xl font-headline text-white">$142.50</p>
-                  <p className="text-[10px] text-muted-foreground">IDLE GPU SPEND THIS MONTH</p>
+                  <p className="text-2xl font-headline text-white">
+                    ${gpuNodes.reduce((acc, node) => acc + (node.status === 'UNDER-UTILIZED' ? node.cost * 24 * 30 : 0), 0).toFixed(2)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground uppercase">EST. MONTHLY WASTED SPEND</p>
                 </div>
                 <div className="pt-4 border-t border-white/5">
                   <div className="flex justify-between items-center mb-2">
-                    <p className="text-[10px] text-muted-foreground">GPU LOAD VS COST</p>
-                    <p className="text-destructive text-[10px] font-code">ANOMALY: 88%</p>
+                    <p className="text-[10px] text-muted-foreground uppercase">Aggregated Load vs Cost</p>
+                    <p className={`${gpuNodes.some(n => n.status === 'UNDER-UTILIZED') ? 'text-destructive' : 'text-primary'} text-[10px] font-code uppercase`}>
+                      {gpuNodes.some(n => n.status === 'UNDER-UTILIZED') ? 'ANOMALY DETECTED' : 'HEALTHY'}
+                    </p>
                   </div>
                   <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-secondary w-[88%]" />
+                    <div 
+                      className={`h-full transition-all duration-500 ${gpuNodes.some(n => n.status === 'UNDER-UTILIZED') ? 'bg-destructive w-[88%]' : 'bg-primary w-[45%]'}`} 
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -338,7 +427,7 @@ export default function Dashboard() {
                     <p className="text-xs text-muted-foreground uppercase tracking-widest font-code">Potential Carbon Reduction</p>
                   </div>
                   <div className="mb-8">
-                    <div className="text-4xl font-headline text-white">$12%</div>
+                    <div className="text-4xl font-headline text-white">12%</div>
                     <p className="text-xs text-muted-foreground uppercase tracking-widest font-code">Estimated Cost Saving</p>
                   </div>
                   <Button className="w-full bg-primary text-black hover:bg-primary/80 font-headline">INITIATE MIGRATION</Button>
@@ -357,10 +446,10 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-1 font-code text-[10px] text-muted-foreground">
-              <p><span className="text-secondary">[09:41:02]</span> GHOST_SCAN triggered: Identified snap-9821x as orphaned.</p>
+              <p><span className="text-secondary">[09:41:02]</span> GHOST_SCAN triggered: Found {shadowResources.length} candidate units.</p>
               <p><span className="text-primary">[09:42:15]</span> UNIT_ECONOMICS update: Cost per User healthy at $0.41.</p>
-              <p><span className="text-yellow-500">[09:44:00]</span> GPU_SENTINEL alert: H100 node utilization below 5% for 30m.</p>
-              <p><span className="text-primary">[09:45:10]</span> GREEN_OPS: Quebec region now 12% cheaper than US-East.</p>
+              <p><span className="text-yellow-500">[09:44:00]</span> GPU_SENTINEL alert: Monitor active for {gpuNodes.length} critical nodes.</p>
+              <p><span className="text-primary">[09:45:10]</span> GREEN_OPS: Quebec region identified as optimal cost/carbon swap.</p>
             </div>
           </CardContent>
         </Card>
