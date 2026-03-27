@@ -1,6 +1,5 @@
-from pydantic import BaseModel, Field, EmailStr, field_validator
-from typing import Optional
-import re
+from pydantic import BaseModel, Field, EmailStr
+from typing import Optional, List
 
 class UserRegisterSchema(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
@@ -8,18 +7,37 @@ class UserRegisterSchema(BaseModel):
     phone: str = Field(..., description="Indian phone number starting with 6-9")
     password: str = Field(..., min_length=8)
 
-    @field_validator('phone')
-    @classmethod
-    def validate_indian_phone(cls, v: str) -> str:
-        # Strict Regex for Indian Phone Numbers: ^[6-9]\d{9}$
-        if not re.match(r'^[6-9]\d{9}$', v):
-            raise ValueError('Invalid Indian phone number. Must be 10 digits starting with 6-9.')
-        return v
-
 class ForecastResponse(BaseModel):
     date: str
     predicted_cost: float
     carbon_estimate: float
+
+class ShadowResource(BaseModel):
+    id: str
+    type: str
+    reason: str
+    monthly_saving: float
+    status: str = "detected"
+
+class UnitEconomicsData(BaseModel):
+    date: str
+    total_cost: float
+    cost_per_user: float
+    is_healthy: bool
+
+class GPUStatus(BaseModel):
+    node_id: str
+    type: str
+    utilization: float
+    hourly_cost: float
+    recommendation: str
+
+class GreenOpsSuggestion(BaseModel):
+    current_region: str
+    target_region: str
+    cost_saving_pct: float
+    carbon_reduction_pct: float
+    is_active: bool
 
 class AlertConfigSchema(BaseModel):
     telegram_token: Optional[str] = ""
