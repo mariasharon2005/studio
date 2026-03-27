@@ -18,12 +18,14 @@ class ShadowResource(BaseModel):
     reason: str
     monthly_saving: float
     status: str = "detected"
+    details: str
 
 class UnitEconomicsData(BaseModel):
     date: str
     total_cost: float
     cost_per_user: float
     is_healthy: bool
+    note: str
 
 class GPUStatus(BaseModel):
     node_id: str
@@ -31,6 +33,7 @@ class GPUStatus(BaseModel):
     utilization: float
     hourly_cost: float
     recommendation: str
+    is_emergency: bool
 
 class GreenOpsSuggestion(BaseModel):
     current_region: str
