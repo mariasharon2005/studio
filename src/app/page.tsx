@@ -1,3 +1,9 @@
+import SentinelOps from '@/components/SentinelOps';
+
 export default function Home() {
-  return <></>;
+  return (
+    <main>
+      <SentinelOps />
+    </main>
+  );
 }
