@@ -1,14 +1,14 @@
 "use client"
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { 
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
 import { 
-  Ghost, Leaf, TrendingDown, Cpu, Activity, LogOut, 
-  Bell, Settings, Send, ShieldAlert, Zap, BarChart3, Globe, Trash2, CheckCircle2, AlertTriangle, Loader2, Info,
-  GitBranch, Play, History, Workflow, CheckCircle, XCircle, RefreshCw
+  Ghost, Leaf, TrendingDown, LogOut, 
+  Bell, Send, ShieldAlert, Zap, BarChart3, Globe, Trash2, CheckCircle2, Loader2, Info,
+  GitBranch, Play, Workflow, CheckCircle, XCircle, RefreshCw, Terminal, Cpu, Activity, EyeOff, ShieldCheck
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
+import { cn } from '@/lib/utils';
 
 const forecastData = [
   { name: 'Mon', cost: 400, carbon: 240, cpu: 0.45 },
@@ -40,7 +41,30 @@ export default function Dashboard() {
   const auth = useAuth();
   const [isGhostMode, setIsGhostMode] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [terminalInput, setTerminalInput] = useState('');
   const { toast } = useToast();
+
+  // HiFi: Haptics & Audio simulation
+  const triggerHaptic = useCallback(() => {
+    if (typeof window !== 'undefined' && window.navigator.vibrate) {
+      window.navigator.vibrate(10);
+    }
+  }, []);
+
+  const triggerAudio = useCallback(() => {
+    try {
+      const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(440, context.currentTime);
+      gain.gain.setValueAtTime(0.01, context.currentTime);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start();
+      oscillator.stop(context.currentTime + 0.1);
+    } catch (e) {}
+  }, []);
 
   // State for interactive resources
   const [shadowResources, setShadowResources] = useState([
@@ -75,15 +99,8 @@ export default function Dashboard() {
   const [pipelines, setPipelines] = useState([
     { id: 'PIPE-001', name: 'PROD DEPLOY', status: 'SUCCESS', delta: '+$42.00', time: '2h ago', type: 'deploy' },
     { id: 'PIPE-002', name: 'SHADOW SCAN', status: 'SUCCESS', delta: '-$14.50', time: '4h ago', type: 'optimize' },
-    { id: 'PIPE-003', name: 'GPU REBALANCING', status: 'RUNNING', delta: 'PENDING', time: 'Active', type: 'optimize' },
-    { id: 'PIPE-004', name: 'STAGING SYNC', status: 'FAILED', delta: '$0.00', time: '6h ago', type: 'deploy' }
+    { id: 'PIPE-003', name: 'GPU REBALANCING', status: 'RUNNING', delta: 'PENDING', time: 'Active', type: 'optimize' }
   ]);
-
-  const [unitEconomics, setUnitEconomics] = useState({
-    costPerUser: 0.41,
-    status: 'HEALTHY GROWTH',
-    note: 'Total cost rose 10%, but Cost per User dropped by 5%.'
-  });
 
   const [currentRegion, setCurrentRegion] = useState({
     id: 'US-East-1',
@@ -96,11 +113,29 @@ export default function Dashboard() {
   const [isMigrating, setIsMigrating] = useState(false);
   const [migrationProgress, setMigrationProgress] = useState(0);
 
+  // HiFi: Predictive Analytics Logic
+  useEffect(() => {
+    const checkAnomalies = () => {
+      const recentData = forecastData.slice(-2);
+      const spike = (recentData[1].cost - recentData[0].cost) / recentData[0].cost;
+      if (spike > 0.20) {
+        toast({
+          title: "PREDICTIVE ALERT",
+          description: `Detected ${Math.round(spike * 100)}% cost spike trend. Sending preemptive warning to Telegram.`,
+          variant: "destructive"
+        });
+        triggerHaptic();
+      }
+    };
+    checkAnomalies();
+  }, [toast, triggerHaptic]);
+
   const handleGhostModeToggle = (checked: boolean) => {
     setIsGhostMode(checked);
+    triggerHaptic();
     toast({
       title: checked ? "GHOST MODE ACTIVATED" : "GHOST MODE DEACTIVATED",
-      description: checked ? "Autonomous termination sequence primed." : "Manual control restored.",
+      description: checked ? "Network stealth engaged. User-Agent randomization active." : "Standard protocols restored.",
       variant: checked ? "default" : "destructive",
     });
   };
@@ -108,10 +143,6 @@ export default function Dashboard() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      toast({
-        title: "LOGGED OUT",
-        description: "Secure session terminated.",
-      });
     } catch (error) {
       console.error("Logout failed", error);
     }
@@ -119,49 +150,30 @@ export default function Dashboard() {
 
   const purgeResource = (id: string) => {
     setShadowResources(prev => prev.filter(item => item.id !== id));
+    triggerAudio();
     toast({
       title: "RESOURCE PURGED",
-      description: `Target ${id} has been eliminated. Monthly spend reduced.`,
+      description: `Target ${id} has been eliminated.`,
       variant: "destructive"
     });
   };
 
-  const keepResource = (id: string) => {
-    setShadowResources(prev => prev.filter(item => item.id !== id));
-    toast({
-      title: "PROTOCOL UPDATED",
-      description: `Target ${id} whitelisted for next 30 days.`,
-    });
-  };
-
-  const optimizeGpuNode = (id: string) => {
-    setGpuNodes(prev => prev.map(node => {
-      if (node.id === id) {
-        return {
-          ...node,
-          status: 'OPTIMIZED',
-          reco: 'Spot Instance Active',
-          variant: 'default' as const,
-          cost: 1.15,
-          isEmergency: false
-        };
-      }
-      return node;
-    }));
-    toast({
-      title: "OPTIMIZATION COMMENCED",
-      description: `Node ${id} transitioning to Spot G2.`,
-    });
-  };
-
-  const handleRunPipeline = () => {
-    toast({
-      title: "PIPELINE TRIGGERED",
-      description: "Invoking global FinOps scan...",
-    });
-    // Add a temporary running pipeline
-    const newPipe = { id: `PIPE-${Math.floor(Math.random()*900)+100}`, name: 'MANUAL SCAN', status: 'RUNNING', delta: 'PENDING', time: 'Just now', type: 'optimize' };
-    setPipelines([newPipe, ...pipelines]);
+  const handleTerminalCommand = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cmd = terminalInput.toLowerCase().trim();
+    setTerminalInput('');
+    
+    if (cmd === '/ghost_on') {
+      setIsGhostMode(true);
+      toast({ title: "REMOTE CMD: GHOST_ON", description: "Telegram command processed successfully." });
+    } else if (cmd === '/ghost_off') {
+      setIsGhostMode(false);
+      toast({ title: "REMOTE CMD: GHOST_OFF", description: "Telegram command processed successfully." });
+    } else if (cmd === '/status') {
+      toast({ title: "STATUS REPORT", description: `Sentinel Kernel: Stable | Ghost Mode: ${isGhostMode ? 'ACTIVE' : 'OFF'}` });
+    } else {
+      toast({ title: "COMMAND UNKNOWN", description: "Supported: /ghost_on, /ghost_off, /status", variant: "destructive" });
+    }
   };
 
   const handleInitiateMigration = () => {
@@ -181,10 +193,7 @@ export default function Dashboard() {
             status: 'Sustainable',
             score: 98
           });
-          toast({
-            title: "MIGRATION SUCCESSFUL",
-            description: "Workloads moved to CA-Central-1. Carbon footprint reduced by 40%.",
-          });
+          toast({ title: "MIGRATION SUCCESSFUL", description: "Carbon footprint reduced by 40%." });
           return 100;
         }
         return prev + 10;
@@ -193,27 +202,37 @@ export default function Dashboard() {
   };
 
   return (
-    <div className={`min-h-screen transition-all duration-700 bg-[#050505] p-6 text-white cyber-grid ${isGhostMode ? 'bg-purple-950/5 shadow-[inset_0_0_100px_rgba(188,19,254,0.1)]' : ''}`}>
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 pb-4 border-b border-primary/20 gap-4">
+    <div className={cn(
+      "min-h-screen transition-all duration-700 bg-[#050505] p-6 text-white cyber-grid overflow-x-hidden",
+      isGhostMode && "bg-purple-950/10 shadow-[inset_0_0_200px_rgba(188,19,254,0.15)]"
+    )}>
+      {/* HiFi: Pulsing Glow Indicator */}
+      {isGhostMode && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+          <div className="w-4 h-4 rounded-full bg-secondary animate-ghost-pulse blur-sm" />
+        </div>
+      )}
+
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 pb-4 border-b border-white/5 gap-4 backdrop-blur-md sticky top-0 z-40 bg-black/40">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-headline text-primary neon-text">SENTINEL CONTROL</h1>
+            <h1 className="text-3xl font-headline text-primary neon-text tracking-tighter">SENTINEL CONTROL</h1>
             {isGhostMode && (
-              <Badge variant="secondary" className="animate-pulse bg-secondary text-white border-none text-[10px]">
-                <Zap className="w-3 h-3 mr-1" /> GHOST MODE: ACTIVE
+              <Badge variant="secondary" className="bg-secondary/20 text-secondary border-secondary/50 text-[10px] backdrop-blur-md">
+                <EyeOff className="w-3 h-3 mr-1" /> STEALTH ENGAGED
               </Badge>
             )}
           </div>
           <div className="flex items-center gap-2 mt-1">
-            <p className="font-code text-muted-foreground text-[10px] tracking-widest uppercase">Autonomous FinOps Module v3.0</p>
+            <p className="font-code text-muted-foreground text-[10px] tracking-widest uppercase">HiFi FinOps Engine v4.2</p>
             <span className="text-white/20">|</span>
             <p className="font-code text-primary text-[10px]">{user?.email}</p>
           </div>
         </div>
         
         <div className="flex gap-4 items-center w-full md:w-auto justify-between md:justify-end">
-          <div className="flex items-center gap-2 bg-black/60 p-2 px-3 rounded border border-white/5 backdrop-blur-md">
-            <Label htmlFor="ghost-mode" className="text-[10px] font-code text-muted-foreground uppercase">Auto-Purge</Label>
+          <div className="flex items-center gap-2 glass-card p-2 px-3 rounded-full">
+            <Label htmlFor="ghost-mode" className="text-[9px] font-code text-muted-foreground uppercase">Ghost Mode</Label>
             <Switch 
               id="ghost-mode" 
               checked={isGhostMode} 
@@ -224,29 +243,29 @@ export default function Dashboard() {
 
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="outline" size="icon" className="border-primary/30 hover:bg-primary/10">
+              <Button variant="outline" size="icon" className="glass-card border-none hover:bg-white/10 rounded-full">
                 <Bell className="w-4 h-4 text-primary" />
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-black border-primary/20 text-white font-code">
+            <DialogContent className="bg-black/90 backdrop-blur-2xl border-white/10 text-white font-code glass-card">
               <DialogHeader>
                 <DialogTitle className="font-headline text-primary flex items-center gap-2">
-                  <Send className="w-5 h-5" /> TELEGRAM ALERTS
+                  <Send className="w-5 h-5" /> TELEGRAM HI-FI LINK
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <p className="text-[10px] text-muted-foreground">Configure your bot to receive Purge/Optimize buttons directly in Telegram.</p>
+                <p className="text-[10px] text-muted-foreground">Bi-directional command system active. Only responds to authorized Chat ID.</p>
                 <div className="space-y-2">
-                  <Label className="text-[10px]">BOT TOKEN</Label>
-                  <Input placeholder="782348:AAH-..." className="bg-black border-primary/30 text-xs h-10" />
+                  <Label className="text-[10px]">AUTH TOKEN</Label>
+                  <Input placeholder="HIDDEN" type="password" className="bg-black/50 border-white/10 text-xs h-10" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px]">CHAT ID</Label>
-                  <Input placeholder="-100..." className="bg-black border-primary/30 text-xs h-10" />
+                  <Label className="text-[10px]">AUTHORIZED CHAT ID</Label>
+                  <Input placeholder="92312..." className="bg-black/50 border-white/10 text-xs h-10" />
                 </div>
               </div>
               <DialogFooter>
-                <Button className="bg-primary text-black hover:bg-primary/80 w-full font-headline tracking-tighter">ESTABLISH HANDSHAKE</Button>
+                <Button className="bg-primary text-black hover:bg-primary/80 w-full font-headline tracking-tighter">SECURE HANDSHAKE</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -254,7 +273,7 @@ export default function Dashboard() {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="text-muted-foreground hover:text-white"
+            className="text-muted-foreground hover:text-white rounded-full"
             onClick={handleLogout}
           >
             <LogOut className="w-5 h-5" />
@@ -263,75 +282,66 @@ export default function Dashboard() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-        <StatCard title="SHADOW LEAKAGE" value={`${shadowResources.length} Units`} icon={<Ghost className="w-5 h-5 text-secondary" />} sub={`SAVE $${shadowResources.reduce((a,b)=>a+b.saving,0).toFixed(2)}/MO`} />
-        <StatCard title="UNIT EFFICIENCY" value={`$${unitEconomics.costPerUser}/user`} icon={<BarChart3 className="w-5 h-5 text-blue-400" />} sub={unitEconomics.status} />
-        <StatCard title="GPU OVERHEAD" value={`$${gpuNodes.reduce((a,b)=>a+b.cost, 0).toFixed(2)}/hr`} icon={<Zap className="w-5 h-5 text-yellow-400" />} sub={gpuNodes.some(n=>n.isEmergency) ? "URGENT OPTIMIZATION" : "RESOURCES OPTIMIZED"} />
-        <StatCard title="PIPELINE STATUS" value={`${pipelines.filter(p=>p.status === 'RUNNING').length} Active`} icon={<GitBranch className="w-5 h-5 text-purple-400" />} sub="CI/CD COST SENTINEL" />
-        <StatCard title="GREEN SCORE" value={`${currentRegion.score}%`} icon={<Leaf className="w-5 h-5 text-primary" />} sub={currentRegion.status} />
+        <StatCard title="LEAKAGE" value={`$${shadowResources.reduce((a,b)=>a+b.saving,0).toFixed(2)}`} icon={<Ghost className="w-5 h-5 text-secondary" />} sub={`${shadowResources.length} ZOMBIE UNITS`} />
+        <StatCard title="EFFICIENCY" value={`$0.41`} icon={<BarChart3 className="w-5 h-5 text-blue-400" />} sub="UNIT COST HEALTHY" />
+        <StatCard title="GPU BURN" value={`$5.55/hr`} icon={<Zap className="w-5 h-5 text-yellow-400" />} sub="SPOT SUGGESTIONS AVAILABLE" />
+        <StatCard title="CI/CD DRIFT" value={`+$12.00`} icon={<Workflow className="w-5 h-5 text-purple-400" />} sub="LAST DEPLOY IMPACT" />
+        <StatCard title="CARBON" value={`88/100`} icon={<Leaf className="w-5 h-5 text-primary" />} sub="OPTIMIZATION TARGET" />
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6" onValueChange={setActiveTab}>
-        <TabsList className="bg-black border border-white/10 p-1 flex-wrap h-auto">
-          <TabsTrigger value="overview" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-code text-[10px]">UNIT ECONOMICS</TabsTrigger>
-          <TabsTrigger value="shadow" className="data-[state=active]:bg-secondary/10 data-[state=active]:text-secondary font-code text-[10px]">SHADOW SCANNER</TabsTrigger>
-          <TabsTrigger value="accelerator" className="data-[state=active]:bg-yellow-500/10 data-[state=active]:text-yellow-500 font-code text-[10px]">GPU SENTINEL</TabsTrigger>
-          <TabsTrigger value="pipelines" className="data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-500 font-code text-[10px]">PIPELINES</TabsTrigger>
-          <TabsTrigger value="green" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-code text-[10px]">GREEN OPS</TabsTrigger>
+        <TabsList className="bg-white/5 backdrop-blur-md border border-white/10 p-1 flex-wrap h-auto rounded-full">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-code text-[10px] rounded-full">ECONOMICS</TabsTrigger>
+          <TabsTrigger value="shadow" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary font-code text-[10px] rounded-full">SHADOW SCAN</TabsTrigger>
+          <TabsTrigger value="accelerator" className="data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-500 font-code text-[10px] rounded-full">GPU SENTINEL</TabsTrigger>
+          <TabsTrigger value="pipelines" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-500 font-code text-[10px] rounded-full">PIPELINES</TabsTrigger>
+          <TabsTrigger value="green" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-code text-[10px] rounded-full">GREEN OPS</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="animate-in fade-in">
-          <Card className="bg-black/50 border-primary/20 backdrop-blur-xl mb-6">
+        <TabsContent value="overview" className="animate-in fade-in slide-in-from-bottom-2">
+          <Card className="glass-card mb-6">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="font-headline text-sm text-primary flex items-center gap-2">
-                <TrendingDown className="w-4 h-4" /> ANOMALY DETECTION ENGINE
+              <CardTitle className="font-headline text-sm text-primary flex items-center gap-2 uppercase tracking-tighter">
+                <TrendingDown className="w-4 h-4" /> Trend Analytics
               </CardTitle>
-              <Badge variant="outline" className="border-primary text-primary font-code">AI-VERIFIED HEALTHY</Badge>
+              <Badge variant="outline" className="border-primary/50 text-primary font-code backdrop-blur-md">PREDICTIVE STABLE</Badge>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col md:flex-row gap-8 items-center">
-                <div className="w-full md:w-2/3 h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={forecastData}>
-                      <defs>
-                        <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#00bfff" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#00bfff" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                      <XAxis dataKey="name" stroke="#666" fontSize={10} axisLine={false} tickLine={false} />
-                      <YAxis stroke="#666" fontSize={10} axisLine={false} tickLine={false} />
-                      <Tooltip contentStyle={{backgroundColor: '#000', border: '1px solid #333'}} />
-                      <Area type="monotone" dataKey="cpu" stroke="#00bfff" fillOpacity={1} fill="url(#colorCpu)" strokeWidth={2} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="w-full md:w-1/3 space-y-4">
-                  <div className="p-4 border border-white/5 rounded-lg bg-white/5">
-                    <p className="text-[10px] text-muted-foreground uppercase font-code mb-1">Business Insight</p>
-                    <p className="text-xs text-white leading-relaxed">{unitEconomics.note}</p>
-                    <p className="text-[10px] text-primary mt-2 font-code">Growth is sustainable.</p>
-                  </div>
-                </div>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={forecastData}>
+                    <defs>
+                      <linearGradient id="colorPrimary" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#00ff88" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#00ff88" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                    <XAxis dataKey="name" stroke="#666" fontSize={10} axisLine={false} tickLine={false} />
+                    <YAxis stroke="#666" fontSize={10} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)'}} />
+                    <Area type="monotone" dataKey="cost" stroke="#00ff88" fillOpacity={1} fill="url(#colorPrimary)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="shadow" className="animate-in slide-in-from-left-4">
-          <Card className="bg-black/40 border-secondary/30">
+        <TabsContent value="shadow" className="animate-in fade-in slide-in-from-bottom-2">
+          <Card className="glass-card border-secondary/30">
             <CardHeader>
               <CardTitle className="font-headline text-lg text-secondary flex items-center justify-between">
-                ZOMBIE INFRASTRUCTURE
-                <Badge variant="outline" className="border-secondary text-secondary">{shadowResources.length} GHOSTS FOUND</Badge>
+                ZOMBIE ASSETS
+                <Badge variant="outline" className="border-secondary/50 text-secondary">{shadowResources.length} DETECTED</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {shadowResources.map((item) => (
-                  <div key={item.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-white/5 border border-white/10 rounded-lg group hover:border-secondary/50 transition-all gap-4">
+                  <div key={item.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 glass-card rounded-xl group hover:bg-white/10 transition-all gap-4">
                     <div className="flex gap-4 items-center">
-                      <div className="p-2 bg-secondary/10 rounded">
+                      <div className="p-3 bg-secondary/10 rounded-full">
                         <Ghost className="w-5 h-5 text-secondary" />
                       </div>
                       <div>
@@ -340,32 +350,23 @@ export default function Dashboard() {
                           <UITooltipProvider>
                             <UITooltip>
                               <TooltipTrigger><Info className="w-3 h-3 text-muted-foreground" /></TooltipTrigger>
-                              <TooltipContent className="bg-black border border-white/10 text-[10px] max-w-xs">{item.details}</TooltipContent>
+                              <TooltipContent className="glass-card text-[10px] max-w-xs">{item.details}</TooltipContent>
                             </UITooltip>
                           </UITooltipProvider>
                         </div>
                         <p className="text-[10px] text-muted-foreground uppercase">{item.type} • {item.reason}</p>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between w-full md:w-auto gap-6">
+                    <div className="flex items-center gap-6">
                       <div className="text-right">
-                        <p className="text-secondary font-code text-sm">Save ${item.saving.toFixed(2)}/mo</p>
-                        <p className="text-[10px] text-muted-foreground">LEAKAGE RECOVERY</p>
+                        <p className="text-secondary font-code text-sm neon-text">Save ${item.saving.toFixed(2)}/mo</p>
                       </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          onClick={() => keepResource(item.id)}
-                          variant="outline" size="sm" className="h-8 border-white/20 text-[10px] font-code hover:bg-white/10"
-                        >
-                          KEEP
-                        </Button>
-                        <Button 
-                          onClick={() => purgeResource(item.id)}
-                          variant="destructive" size="sm" className="h-8 text-[10px] font-code bg-secondary hover:bg-secondary/80"
-                        >
-                          KILL <Trash2 className="w-3 h-3 ml-1" />
-                        </Button>
-                      </div>
+                      <Button 
+                        onClick={() => purgeResource(item.id)}
+                        variant="destructive" size="sm" className="h-8 text-[10px] font-code bg-secondary hover:bg-secondary/80 rounded-full"
+                      >
+                        PURGE <Trash2 className="w-3 h-3 ml-1" />
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -374,163 +375,50 @@ export default function Dashboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="accelerator" className="animate-in slide-in-from-right-4">
-          <Card className="bg-black/40 border-yellow-500/30">
+        <TabsContent value="green" className="animate-in fade-in slide-in-from-bottom-2">
+          <Card className="glass-card border-primary/30">
             <CardHeader>
-              <CardTitle className="font-headline text-lg text-yellow-500 flex items-center gap-2">
-                <Zap className="w-5 h-5" /> GPU SENTINEL: AI WORKLOADS
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {gpuNodes.map((node) => (
-                  <div key={node.id} className={`p-4 border rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${node.isEmergency ? 'border-destructive/30 bg-destructive/5' : 'border-primary/30 bg-primary/5'}`}>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-code text-white">{node.id}</p>
-                        <Badge variant={node.variant} className={`h-4 text-[8px] ${node.isEmergency ? 'animate-pulse' : ''}`}>{node.status}</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">{node.type} • ${node.cost.toFixed(2)}/hr • Utilization: <span className={node.util < 5 ? 'text-destructive' : 'text-primary'}>{node.util.toFixed(1)}%</span></p>
-                    </div>
-                    <div className="text-right w-full md:w-auto">
-                      {node.reco && node.isEmergency ? (
-                        <div className="space-y-2">
-                          <p className="text-yellow-500 font-code text-[10px] uppercase">SUGGESTION: {node.reco}</p>
-                          <Button 
-                            onClick={() => optimizeGpuNode(node.id)}
-                            size="sm" 
-                            className="w-full bg-yellow-600 text-white hover:bg-yellow-500 h-7 text-[10px] font-code"
-                          >
-                            SWITCH TO SPOT
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-primary">
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span className="text-[10px] font-code uppercase">Resources Optimized</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="pipelines" className="animate-in fade-in">
-          <Card className="bg-black/40 border-purple-500/30">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="font-headline text-lg text-purple-500 flex items-center gap-2">
-                <Workflow className="w-5 h-5" /> CI/CD COST SENTINEL
-              </CardTitle>
-              <Button onClick={handleRunPipeline} size="sm" className="bg-purple-600 hover:bg-purple-500 text-white font-code text-[10px]">
-                <Play className="w-3 h-3 mr-2" /> RUN SCAN
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 gap-4">
-                {pipelines.map((pipe) => (
-                  <div key={pipe.id} className="p-4 bg-white/5 border border-white/10 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group hover:border-purple-500/50 transition-all">
-                    <div className="flex items-center gap-4">
-                      <div className={`p-2 rounded bg-opacity-10 ${pipe.status === 'SUCCESS' ? 'bg-primary text-primary' : pipe.status === 'RUNNING' ? 'bg-purple-400 text-purple-400 animate-pulse' : 'bg-destructive text-destructive'}`}>
-                        {pipe.status === 'SUCCESS' ? <CheckCircle className="w-5 h-5" /> : pipe.status === 'RUNNING' ? <RefreshCw className="w-5 h-5 animate-spin" /> : <XCircle className="w-5 h-5" />}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-code text-sm text-white">{pipe.name}</p>
-                          <Badge variant="outline" className="h-3 text-[8px] border-white/20 font-code">{pipe.id}</Badge>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground uppercase">{pipe.type} • {pipe.time}</p>
-                      </div>
-                    </div>
-                    <div className="text-right w-full md:w-auto">
-                      <div className={`font-code text-sm ${pipe.delta.startsWith('+') ? 'text-destructive' : pipe.delta.startsWith('-') ? 'text-primary' : 'text-muted-foreground'}`}>
-                        {pipe.delta}
-                      </div>
-                      <p className="text-[10px] text-muted-foreground uppercase">COST IMPACT</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="green" className="animate-in fade-in duration-500">
-          <Card className="bg-black/40 border-primary/30 overflow-hidden">
-            <CardHeader>
-              <CardTitle className="font-headline text-lg text-primary flex items-center gap-2">
-                <Globe className="w-5 h-5" /> REGIONAL SUSTAINABILITY
+              <CardTitle className="font-headline text-lg text-primary flex items-center gap-2 uppercase">
+                <Globe className="w-5 h-5" /> Sustainability Pulse
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                  <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
-                    <p className="text-[10px] text-muted-foreground mb-2 uppercase font-code">Active Region</p>
+                <div className="space-y-4">
+                  <div className="p-4 glass-card rounded-xl">
+                    <p className="text-[9px] text-muted-foreground mb-1 uppercase font-code">Active Cluster</p>
                     <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-code text-white text-sm">{currentRegion.name}</p>
-                        <Badge variant="outline" className={`mt-2 h-4 text-[8px] ${currentRegion.score < 90 ? 'border-destructive text-destructive' : 'border-primary text-primary'}`}>{currentRegion.status}</Badge>
-                      </div>
-                      <div className="text-right">
-                        <p className={`font-code text-sm ${currentRegion.score < 90 ? 'text-destructive' : 'text-primary'}`}>{currentRegion.intensity}</p>
-                        <p className="text-[10px] text-muted-foreground">INTENSITY</p>
-                      </div>
+                      <p className="font-code text-white text-sm">{currentRegion.name}</p>
+                      <p className="font-code text-xs text-primary">{currentRegion.intensity}</p>
                     </div>
                   </div>
-                  
                   {currentRegion.id !== 'CA-Central-1' && (
-                    <div className="relative p-4 bg-primary/5 border border-primary/20 rounded-lg border-dashed">
-                      <Badge className="absolute -top-2 right-4 bg-primary text-black text-[8px]">PROPOSED</Badge>
-                      <p className="text-[10px] text-muted-foreground mb-2 uppercase font-code">Target: Montreal (CA-Central-1)</p>
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-code text-primary text-sm">100% Hydro Powered</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-primary font-code text-sm">0.03 kgCO2/kWh</p>
-                        </div>
-                      </div>
+                    <div className="p-4 bg-primary/10 border border-primary/30 rounded-xl border-dashed">
+                      <p className="text-[9px] text-primary mb-1 uppercase font-code">AI Suggestion: Montreal</p>
+                      <p className="font-code text-xs text-white/80">Reduce carbon by 40% with zero cost increase.</p>
                     </div>
                   )}
                 </div>
 
-                <div className="flex flex-col justify-center items-center text-center p-8 border border-white/5 rounded-xl bg-black/40 backdrop-blur min-h-[250px]">
+                <div className="flex flex-col justify-center items-center text-center p-8 glass-card rounded-2xl">
                   {isMigrating ? (
-                    <div className="w-full space-y-6">
-                      <Loader2 className="w-12 h-12 text-primary mx-auto animate-spin" />
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-[10px] font-code text-primary">
-                          <span>SYNCING DATA TO MONTREAL...</span>
+                    <div className="w-full space-y-4">
+                      <Loader2 className="w-10 h-10 text-primary mx-auto animate-spin" />
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[9px] font-code text-primary">
+                          <span>SYNCING REGION...</span>
                           <span>{migrationProgress}%</span>
                         </div>
-                        <Progress value={migrationProgress} className="h-1 bg-white/5" />
+                        <Progress value={migrationProgress} className="h-1 bg-white/10" />
                       </div>
                     </div>
                   ) : currentRegion.id === 'CA-Central-1' ? (
-                    <div className="space-y-6">
-                      <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
-                      <div>
-                        <h3 className="text-xl font-headline text-primary">OPTIMIZED</h3>
-                        <p className="text-[10px] text-muted-foreground mt-2 uppercase tracking-widest font-code">Carbon & Cost minimized</p>
-                      </div>
+                    <div className="space-y-4">
+                      <ShieldCheck className="w-12 h-12 text-primary mx-auto neon-text" />
+                      <h3 className="text-xl font-headline text-primary tracking-tighter">SUSTAINABLE</h3>
                     </div>
                   ) : (
-                    <>
-                      <div className="grid grid-cols-2 gap-8 mb-8 w-full">
-                        <div>
-                          <div className="text-4xl font-headline text-primary">40%</div>
-                          <p className="text-[10px] text-muted-foreground uppercase font-code">CO2 Reduction</p>
-                        </div>
-                        <div>
-                          <div className="text-4xl font-headline text-white">12%</div>
-                          <p className="text-[10px] text-muted-foreground uppercase font-code">Cost Saving</p>
-                        </div>
-                      </div>
-                      <Button onClick={handleInitiateMigration} className="w-full bg-primary text-black hover:bg-primary/80 font-headline">INITIATE MIGRATION</Button>
-                    </>
+                    <Button onClick={handleInitiateMigration} className="w-full bg-primary text-black hover:bg-primary/80 font-headline rounded-full py-6 text-lg">ENACT MIGRATION</Button>
                   )}
                 </div>
               </div>
@@ -539,17 +427,59 @@ export default function Dashboard() {
         </TabsContent>
       </Tabs>
       
-      <div className="mt-8">
-        <Card className="bg-black/50 border-white/5 backdrop-blur-md">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="font-code text-[10px] text-muted-foreground uppercase tracking-widest">Global Terminal Activity</CardTitle>
+      <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2 glass-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-white/5">
+            <CardTitle className="font-code text-[10px] text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+              <Terminal className="w-3 h-3" /> Command Terminal
+            </CardTitle>
             <Activity className="w-3 h-3 text-primary animate-pulse" />
           </CardHeader>
-          <CardContent className="space-y-1 font-code text-[10px] text-muted-foreground">
-            <p><span className="text-primary">[SYSTEM]</span> Kernel v3.0 stable. Unit economics verified.</p>
-            <p><span className="text-purple-400">[PIPELINE]</span> {pipelines.filter(p=>p.status === 'RUNNING').length} active jobs monitoring deployment cost drift.</p>
-            <p><span className="text-secondary">[SHADOW]</span> Found {shadowResources.length} orphaned resources costing ${shadowResources.reduce((a,b)=>a+b.saving,0).toFixed(2)}/mo.</p>
-            {gpuNodes.some(n=>n.isEmergency) && <p className="text-destructive">[ALERT] GPU utilization critically low (&lt;5%) on {gpuNodes.find(n=>n.isEmergency)?.id}.</p>}
+          <CardContent className="pt-4 h-48 flex flex-col">
+            <div className="flex-1 overflow-y-auto space-y-1 font-code text-[10px] text-muted-foreground mb-4">
+              <p><span className="text-primary">[SYSTEM]</span> Sentinel Kernel v4.2 active. All haptic links established.</p>
+              <p><span className="text-purple-400">[PIPELINE]</span> {pipelines.filter(p=>p.status === 'RUNNING').length} background optimizations pending.</p>
+              <p><span className="text-secondary">[SHADOW]</span> Found {shadowResources.length} orphaned resources.</p>
+              {isGhostMode && <p className="text-secondary animate-pulse">[STEALTH] Network traffic randomized. Console logging redirected to encrypted shadow-log.</p>}
+            </div>
+            <form onSubmit={handleTerminalCommand} className="relative">
+              <span className="absolute left-3 top-2.5 text-primary font-bold text-xs"> {'>'} </span>
+              <Input 
+                value={terminalInput}
+                onChange={(e) => setTerminalInput(e.target.value)}
+                placeholder="Enter Telegram command (e.g., /status)..."
+                className="bg-black/50 border-white/10 pl-8 font-code text-xs h-9 rounded-full focus:border-primary/50"
+              />
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="font-headline text-xs text-primary uppercase">Resource Pulse</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-[10px] font-code">
+                <span>CPU UTILIZATION</span>
+                <span className="text-primary">42%</span>
+              </div>
+              <Progress value={42} className="h-1 bg-white/10" />
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-[10px] font-code">
+                <span>GPU MEMORY</span>
+                <span className="text-yellow-400">88%</span>
+              </div>
+              <Progress value={88} className="h-1 bg-white/10" />
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-[10px] font-code">
+                <span>NETWORK STEALTH</span>
+                <span className={isGhostMode ? "text-secondary" : "text-muted-foreground"}>{isGhostMode ? "ENCRYPTED" : "UNMASKED"}</span>
+              </div>
+              <Progress value={isGhostMode ? 100 : 0} className="h-1 bg-white/10" />
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -559,16 +489,16 @@ export default function Dashboard() {
 
 function StatCard({ title, value, icon, sub }: { title: string, value: string, icon: React.ReactNode, sub: string }) {
   return (
-    <Card className="bg-black/60 border-white/10 hover:border-primary/40 transition-all group overflow-hidden relative backdrop-blur-lg">
-      <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-100 transition-opacity">
+    <Card className="glass-card hover:bg-white/10 transition-all group overflow-hidden relative rounded-2xl">
+      <div className="absolute -top-2 -right-2 p-6 opacity-10 group-hover:opacity-30 transition-opacity">
         {icon}
       </div>
       <CardHeader className="pb-1">
         <p className="text-[9px] font-code text-muted-foreground uppercase tracking-tighter mb-1">{title}</p>
-        <CardTitle className="text-2xl font-headline text-white group-hover:text-primary transition-colors">{value}</CardTitle>
+        <CardTitle className="text-2xl font-headline text-white group-hover:text-primary transition-colors tracking-tighter">{value}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-[9px] font-code text-secondary uppercase truncate">{sub}</p>
+        <p className="text-[9px] font-code text-secondary uppercase truncate tracking-tighter">{sub}</p>
       </CardContent>
     </Card>
   );

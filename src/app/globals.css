@@ -42,6 +42,10 @@
   }
 }
 
+.glass-card {
+  @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)];
+}
+
 .neon-border {
   border: 1px solid #00ff88;
   box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
@@ -59,4 +63,14 @@
   background-image: linear-gradient(rgba(0, 255, 136, 0.05) 1px, transparent 1px),
                     linear-gradient(90deg, rgba(0, 255, 136, 0.05) 1px, transparent 1px);
   background-size: 50px 50px;
+}
+
+@keyframes ghost-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(188, 19, 254, 0.4); }
+  70% { box-shadow: 0 0 0 20px rgba(188, 19, 254, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(188, 19, 254, 0); }
+}
+
+.animate-ghost-pulse {
+  animation: ghost-pulse 2s infinite;
 }
