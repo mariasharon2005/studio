@@ -441,7 +441,7 @@ export default function Dashboard() {
                 </div>
                 <Progress value={(qrRefreshTimer / 20) * 100} className="h-1 bg-white/10" />
                 <p className="text-[9px] text-muted-foreground mt-4 leading-relaxed uppercase">
-                  Open WhatsApp > Settings > Linked Devices > Link a Device
+                  Open WhatsApp &gt; Settings &gt; Linked Devices &gt; Link a Device
                 </p>
               </div>
             )}
