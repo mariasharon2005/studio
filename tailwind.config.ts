@@ -10,9 +10,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Inter', 'sans-serif'],
-        headline: ['Orbitron', 'sans-serif'],
-        code: ['Share Tech Mono', 'monospace'],
+        body: ['Raleway', 'sans-serif'],
+        headline: ['Montserrat', 'sans-serif'],
+        code: ['JetBrains Mono', 'monospace'],
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -26,20 +26,20 @@ export default {
           foreground: 'hsl(var(--popover-foreground))',
         },
         primary: {
-          DEFAULT: '#00ff88',
-          foreground: '#050505',
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
         },
         secondary: {
-          DEFAULT: '#bc13fe',
-          foreground: '#ffffff',
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
         },
         muted: {
           DEFAULT: 'hsl(var(--muted))',
           foreground: 'hsl(var(--muted-foreground))',
         },
         accent: {
-          DEFAULT: '#00ff88',
-          foreground: '#050505',
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
         },
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
@@ -49,8 +49,8 @@ export default {
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
         chart: {
-          '1': '#00ff88',
-          '2': '#bc13fe',
+          '1': 'hsl(var(--primary))',
+          '2': 'hsl(var(--secondary))',
           '3': '#00bfff',
           '4': '#ff0055',
           '5': '#ffcc00',
@@ -63,17 +63,12 @@ export default {
       },
       keyframes: {
         'pulse-neon': {
-          '0%, 100%': { opacity: '1', boxShadow: '0 0 10px #00ff88' },
-          '50%': { opacity: '0.7', boxShadow: '0 0 20px #00ff88' },
-        },
-        'boot-line': {
-          '0%': { width: '0%', opacity: '0' },
-          '100%': { width: '100%', opacity: '1' },
+          '0%, 100%': { opacity: '1', boxShadow: '0 0 10px hsl(var(--primary))' },
+          '50%': { opacity: '0.7', boxShadow: '0 0 20px hsl(var(--primary))' },
         }
       },
       animation: {
         'pulse-neon': 'pulse-neon 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'boot-line': 'boot-line 1.5s ease-out forwards',
       },
     },
   },
