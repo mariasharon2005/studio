@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -67,7 +66,6 @@ export default function Dashboard() {
   const [waStatus, setWaStatus] = useState<'IDLE' | 'LOGGING_OUT' | 'FETCHING_QR' | 'WAITING_SCAN' | 'CONNECTED'>('IDLE');
   const [waQR, setWaQR] = useState<string | null>(null);
   const [qrRefreshTimer, setQrRefreshTimer] = useState(20);
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const triggerHaptic = useCallback(() => {
     if (typeof window !== 'undefined' && window.navigator.vibrate) {
@@ -96,6 +94,11 @@ export default function Dashboard() {
     { id: 'vol-5522b', type: 'EBS Volume', saving: 42.00, reason: 'Detached for 14d', details: 'Large volume detached from shut down instance.' }
   ]);
 
+  const [gpuNodes, setGpuNodes] = useState([
+    { id: 'gpu-h100-primary', type: 'NVIDIA H100', utilization: 4.2, hourlyCost: 3.45, isEmergency: true },
+    { id: 'gpu-a100-worker-1', type: 'NVIDIA A100', utilization: 88.0, hourlyCost: 2.10, isEmergency: false }
+  ]);
+
   const [currentRegion, setCurrentRegion] = useState({
     id: 'US-East-1',
     name: 'N. Virginia',
@@ -121,7 +124,8 @@ export default function Dashboard() {
   const generateNewQR = () => {
     setWaStatus('WAITING_SCAN');
     // Simulate fetching a fresh QR from Green API / Whapi
-    setWaQR(`${PlaceHolderImages.find(img => img.id === 'qr-code')?.imageUrl}?t=${Date.now()}`);
+    const qrImage = PlaceHolderImages.find(img => img.id === 'qr-code');
+    setWaQR(qrImage ? `${qrImage.imageUrl}?t=${Date.now()}` : null);
     setQrRefreshTimer(20);
   };
 
@@ -239,10 +243,6 @@ export default function Dashboard() {
         description: `Target ${id} has been eliminated.`,
         variant: "destructive"
       });
-      // Unified Notification System
-      if (waStatus === 'CONNECTED' && !isGhostMode) {
-        console.log("WhatsApp Alert Sent: Purged " + id);
-      }
     });
   };
 
@@ -413,12 +413,19 @@ export default function Dashboard() {
                 </div>
               ) : waStatus === 'WAITING_SCAN' ? (
                 <div className="relative group cursor-pointer" onClick={generateNewQR}>
-                  <img 
-                    src={waQR!} 
-                    alt="Scan Me" 
-                    className="w-full h-full object-cover rounded-lg"
-                    data-ai-hint="qr code"
-                  />
+                  {waQR ? (
+                    <img 
+                      src={waQR} 
+                      alt="Scan Me" 
+                      className="w-full h-full object-cover rounded-lg"
+                      data-ai-hint="qr code"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-black/50">
+                      <QrCode className="w-12 h-12" />
+                      <span className="text-[10px] uppercase">Fetching QR...</span>
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <RefreshCw className="w-8 h-8 text-black/50" />
                   </div>
@@ -441,7 +448,7 @@ export default function Dashboard() {
                 </div>
                 <Progress value={(qrRefreshTimer / 20) * 100} className="h-1 bg-white/10" />
                 <p className="text-[9px] text-muted-foreground mt-4 leading-relaxed uppercase">
-                  Open WhatsApp &gt; Settings &gt; Linked Devices &gt; Link a Device
+                  Open WhatsApp {' > '} Settings {' > '} Linked Devices {' > '} Link a Device
                 </p>
               </div>
             )}
@@ -489,7 +496,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <StatCard title="LEAKAGE" value={`$${shadowResources.reduce((a,b)=>a+b.saving,0).toFixed(2)}`} icon={<Ghost className="w-5 h-5 text-secondary" />} sub={`${shadowResources.length} ZOMBIE UNITS`} />
         <StatCard title="UNIT COST" value={`$0.30`} icon={<TrendingDown className="w-5 h-5 text-primary" />} sub="30-DAY EFFICIENCY UP" />
-        <StatCard title="GPU BURN" value={`$5.55/hr`} icon={<Zap className="w-5 h-5 text-yellow-400" />} sub="SPOT SUGGESTIONS ACTIVE" />
+        <StatCard title="GPU BURN" value={`$${gpuNodes.reduce((acc, n) => acc + n.hourlyCost, 0).toFixed(2)}/hr`} icon={<Zap className="w-5 h-5 text-yellow-400" />} sub="SPOT SUGGESTIONS ACTIVE" />
         <StatCard title="WA SYNC" value={isGhostMode ? "HIDDEN" : waStatus === 'CONNECTED' ? "LINKED" : "OFFLINE"} icon={<MessageSquare className="w-5 h-5 text-primary" />} sub={waStatus === 'CONNECTED' ? "WEBHOOKS AUTHORIZED" : "AWAITING AUTH"} />
         <StatCard title="GREEN SCORE" value={`98/100`} icon={<Leaf className="w-5 h-5 text-primary" />} sub="MONTREAL SYNCED" />
       </div>
@@ -499,6 +506,7 @@ export default function Dashboard() {
           <TabsTrigger value="overview" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-tech text-[10px] rounded-full px-6 uppercase tracking-wider">Economics</TabsTrigger>
           <TabsTrigger value="trends" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-tech text-[10px] rounded-full px-6 uppercase tracking-wider">6-Month Analytics</TabsTrigger>
           <TabsTrigger value="shadow" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary font-tech text-[10px] rounded-full px-6 uppercase tracking-wider">Shadow Scan</TabsTrigger>
+          <TabsTrigger value="gpu" className="data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-500 font-tech text-[10px] rounded-full px-6 uppercase tracking-wider">GPU Sentinel</TabsTrigger>
           <TabsTrigger value="green" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-tech text-[10px] rounded-full px-6 uppercase tracking-wider">Green Ops</TabsTrigger>
         </TabsList>
 
@@ -624,6 +632,57 @@ export default function Dashboard() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="gpu" className="animate-in fade-in slide-in-from-bottom-2">
+          <Card className="glass-card border-yellow-500/30">
+            <CardHeader>
+              <CardTitle className="font-headline text-lg text-yellow-500 flex items-center gap-2 tracking-widest uppercase">
+                <Cpu className="w-6 h-6" /> GPU Sentinel
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {gpuNodes.map((node) => (
+                  <div key={node.id} className={cn(
+                    "flex flex-col md:flex-row items-start md:items-center justify-between p-5 glass-card rounded-2xl gap-4 border-white/5",
+                    node.isEmergency && "border-destructive/30 bg-destructive/5"
+                  )}>
+                    <div className="flex gap-4 items-center">
+                      <div className={cn(
+                        "p-4 rounded-2xl border",
+                        node.isEmergency ? "bg-destructive/10 border-destructive/20" : "bg-yellow-500/10 border-yellow-500/20"
+                      )}>
+                        <Zap className={cn("w-6 h-6", node.isEmergency ? "text-destructive" : "text-yellow-500")} />
+                      </div>
+                      <div>
+                        <p className="font-tech text-sm text-white tracking-wider">{node.id}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-tech mt-1">{node.type} • {node.utilization}% Utilization</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div className="text-right">
+                        <p className="text-yellow-500 font-tech text-sm">${node.hourlyCost}/hr</p>
+                      </div>
+                      {node.isEmergency && (
+                        <Button 
+                          onClick={() => {
+                            requireSecurity(() => {
+                              setGpuNodes(prev => prev.map(n => n.id === node.id ? {...n, isEmergency: false, hourlyCost: 1.10, type: node.type + " (Spot)"} : n));
+                              toast({ title: "GPU OPTIMIZED", description: "Switched to Spot instance." });
+                            });
+                          }}
+                          className="h-10 px-6 text-[10px] font-headline bg-yellow-600 hover:bg-yellow-500 rounded-full tracking-widest text-black"
+                        >
+                          OPTIMIZE NOW
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="green" className="animate-in fade-in slide-in-from-bottom-2">
           <Card className="glass-card border-primary/30">
             <CardHeader>
@@ -694,6 +753,7 @@ export default function Dashboard() {
               <p><span className="text-primary">[SYSTEM]</span> Sentinel Kernel v5.0 established. WhatsApp sync: {waStatus}.</p>
               <p><span className="text-primary">[SYSTEM]</span> Unit Economics anomaly detection: Cost/User dropped 5% in Jun.</p>
               <p><span className="text-secondary">[SHADOW]</span> Found {shadowResources.length} orphaned resources costing ${shadowResources.reduce((a,b)=>a+b.saving,0).toFixed(2)}/mo.</p>
+              {gpuNodes.some(n => n.isEmergency) && <p className="text-destructive">[ALERT] GPU utilization critically low (&lt;5%) on {gpuNodes.find(n => n.isEmergency)?.id}.</p>}
               {isGhostMode && <p className="text-primary animate-pulse">[STEALTH] Network obfuscation active. Agent: Mozilla/5.0 (Stealth-mode-v5).</p>}
             </div>
             <form onSubmit={handleTerminalCommand} className="relative">
