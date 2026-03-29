@@ -1,6 +1,7 @@
+
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line 
@@ -9,7 +10,8 @@ import {
   Ghost, Leaf, TrendingDown, LogOut, 
   Bell, Send, ShieldAlert, Zap, BarChart3, Globe, Trash2, CheckCircle2, Loader2, Info,
   GitBranch, Play, Workflow, CheckCircle, XCircle, RefreshCw, Terminal, Cpu, Activity, EyeOff, ShieldCheck,
-  Fingerprint, Lock, FileText, Download, AlertTriangle
+  Fingerprint, Lock, FileText, Download, AlertTriangle, MessageSquare, QrCode, Smartphone,
+  CheckCircle2 as SuccessIcon
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -27,6 +29,7 @@ import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { cn } from '@/lib/utils';
 import { jsPDF } from 'jspdf';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 // 6-Month Mock Data
 const sixMonthTrends = [
@@ -58,6 +61,13 @@ export default function Dashboard() {
   const [pinInput, setPinInput] = useState('');
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const { toast } = useToast();
+
+  // WhatsApp Linking State
+  const [isWADialogOpen, setIsWADialogOpen] = useState(false);
+  const [waStatus, setWaStatus] = useState<'IDLE' | 'LOGGING_OUT' | 'FETCHING_QR' | 'WAITING_SCAN' | 'CONNECTED'>('IDLE');
+  const [waQR, setWaQR] = useState<string | null>(null);
+  const [qrRefreshTimer, setQrRefreshTimer] = useState(20);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const triggerHaptic = useCallback(() => {
     if (typeof window !== 'undefined' && window.navigator.vibrate) {
@@ -97,7 +107,46 @@ export default function Dashboard() {
   const [isMigrating, setIsMigrating] = useState(false);
   const [migrationProgress, setMigrationProgress] = useState(0);
 
-  // Biometric Simulation Trigger
+  // WhatsApp QR Logic Simulation
+  const handleLinkWhatsApp = () => {
+    setIsWADialogOpen(true);
+    setWaStatus('LOGGING_OUT');
+    
+    setTimeout(() => {
+      setWaStatus('FETCHING_QR');
+      generateNewQR();
+    }, 1500);
+  };
+
+  const generateNewQR = () => {
+    setWaStatus('WAITING_SCAN');
+    // Simulate fetching a fresh QR from Green API / Whapi
+    setWaQR(`${PlaceHolderImages.find(img => img.id === 'qr-code')?.imageUrl}?t=${Date.now()}`);
+    setQrRefreshTimer(20);
+  };
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (waStatus === 'WAITING_SCAN' && qrRefreshTimer > 0) {
+      timer = setInterval(() => setQrRefreshTimer(t => t - 1), 1000);
+    } else if (qrRefreshTimer === 0 && waStatus === 'WAITING_SCAN') {
+      generateNewQR();
+    }
+    return () => clearInterval(timer);
+  }, [waStatus, qrRefreshTimer]);
+
+  // Simulate Webhook Scan Success
+  useEffect(() => {
+    if (waStatus === 'WAITING_SCAN') {
+      const scanTimeout = setTimeout(() => {
+        setWaStatus('CONNECTED');
+        triggerAudio();
+        toast({ title: "WHATSAPP CONNECTED", description: "Instance status: Authorized. Webhooks active." });
+      }, 8000); // User scans after 8 seconds in this simulation
+      return () => clearTimeout(scanTimeout);
+    }
+  }, [waStatus, triggerAudio, toast]);
+
   const requireSecurity = (action: () => void) => {
     setPendingAction(() => action);
     setIsAuthDialogOpen(true);
@@ -105,7 +154,6 @@ export default function Dashboard() {
   };
 
   const handleBiometricAuth = () => {
-    // Simulate biometric check
     toast({ title: "BIOMETRIC VERIFIED", description: "Identity confirmed via WebAuthn simulation." });
     if (pendingAction) pendingAction();
     setIsAuthDialogOpen(false);
@@ -130,7 +178,7 @@ export default function Dashboard() {
       triggerHaptic();
       toast({
         title: checked ? "GHOST MODE ACTIVATED" : "GHOST MODE DEACTIVATED",
-        description: checked ? "Network stealth engaged. User-Agent randomization active." : "Standard protocols restored.",
+        description: checked ? "Network stealth engaged. WhatsApp alerts muted." : "Standard protocols restored.",
         variant: checked ? "default" : "destructive",
       });
     });
@@ -140,42 +188,37 @@ export default function Dashboard() {
     const doc = new jsPDF();
     const timestamp = new Date().toLocaleString();
     
-    // PDF Styling (Sleek Professional Dark Theme Simulation)
     doc.setFillColor(5, 5, 5);
     doc.rect(0, 0, 210, 297, 'F');
-    
-    doc.setTextColor(0, 191, 255); // Electric Blue
+    doc.setTextColor(0, 191, 255);
     doc.setFontSize(22);
     doc.text('SENTINEL-OPS: 6-MONTH FINOPS REPORT', 10, 20);
-    
     doc.setTextColor(150, 150, 150);
     doc.setFontSize(10);
     doc.text(`Generated: ${timestamp}`, 10, 30);
     doc.text(`User: ${user?.email}`, 10, 35);
-
     doc.setDrawColor(50, 50, 50);
     doc.line(10, 40, 200, 40);
-
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(14);
     doc.text('Summary Statistics', 10, 55);
-    
     doc.setFontSize(11);
     doc.text(`Total Resources Scanned: 428`, 15, 65);
     doc.text(`Total "Ghost" Leakage Detected: $${(shadowResources.reduce((a,b)=>a+b.saving,0) * 6).toFixed(2)}`, 15, 72);
     doc.text(`Unit Cost Efficiency Improvement: 38.7%`, 15, 79);
     doc.text(`Active Ghost Mode Sessions: 12`, 15, 86);
-
     doc.setTextColor(0, 191, 255);
     doc.text('Monthly Trend Analysis (Cost per User)', 10, 105);
-    
     sixMonthTrends.forEach((t, i) => {
       doc.setTextColor(200, 200, 200);
       doc.text(`${t.name}: $${t.efficiency.toFixed(2)} / user`, 20, 115 + (i * 10));
     });
-
     doc.save(`sentinel_ops_report_${Date.now()}.pdf`);
-    toast({ title: "REPORT EXPORTED", description: "Sentinel professional PDF has been downloaded." });
+    toast({ title: "REPORT EXPORTED", description: "Professional PDF dispatched via encrypted channel." });
+    
+    if (waStatus === 'CONNECTED' && !isGhostMode) {
+      toast({ title: "WHATSAPP SYNC", description: "Report shared with your connected WhatsApp device." });
+    }
     triggerAudio();
   };
 
@@ -196,6 +239,10 @@ export default function Dashboard() {
         description: `Target ${id} has been eliminated.`,
         variant: "destructive"
       });
+      // Unified Notification System
+      if (waStatus === 'CONNECTED' && !isGhostMode) {
+        console.log("WhatsApp Alert Sent: Purged " + id);
+      }
     });
   };
 
@@ -209,9 +256,11 @@ export default function Dashboard() {
     } else if (cmd === '/ghost_off') {
       handleGhostModeToggle(false);
     } else if (cmd === '/status') {
-      toast({ title: "STATUS REPORT", description: `Sentinel Kernel: Stable | Ghost Mode: ${isGhostMode ? 'ACTIVE' : 'OFF'}` });
+      toast({ title: "STATUS REPORT", description: `Sentinel Kernel: Stable | WhatsApp: ${waStatus} | Ghost: ${isGhostMode ? 'ACTIVE' : 'OFF'}` });
+    } else if (cmd === '/report' && waStatus === 'CONNECTED') {
+      exportPDF();
     } else {
-      toast({ title: "COMMAND UNKNOWN", description: "Supported: /ghost_on, /ghost_off, /status", variant: "destructive" });
+      toast({ title: "COMMAND UNKNOWN", description: "Supported: /ghost_on, /ghost_off, /status, /report", variant: "destructive" });
     }
   };
 
@@ -287,33 +336,54 @@ export default function Dashboard() {
             <Download className="w-3 h-3 mr-2" /> EXPORT REPORT
           </Button>
 
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="icon" className="glass-card border-none hover:bg-white/10 rounded-full w-10 h-10">
-                <Bell className="w-4 h-4 text-primary" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-black/90 backdrop-blur-2xl border-white/10 text-white font-tech glass-card">
-              <DialogHeader>
-                <DialogTitle className="font-headline text-primary flex items-center gap-2 tracking-widest">
-                  <Send className="w-5 h-5" /> TELEGRAM LINK
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label className="text-[10px]">AUTH TOKEN</Label>
-                  <Input placeholder="HIDDEN" type="password" className="bg-black/50 border-white/10 text-xs h-10 rounded-lg" />
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={handleLinkWhatsApp}
+              variant="outline" 
+              className={cn(
+                "glass-card border-none hover:bg-white/10 rounded-full h-10 px-4 flex items-center gap-2 text-[10px] font-tech",
+                waStatus === 'CONNECTED' ? "text-green-400" : "text-primary"
+              )}
+            >
+              <MessageSquare className="w-4 h-4" /> 
+              {isGhostMode ? "LINK MASKED" : waStatus === 'CONNECTED' ? "WA: ACTIVE" : "LINK WHATSAPP"}
+            </Button>
+
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="icon" className="glass-card border-none hover:bg-white/10 rounded-full w-10 h-10">
+                  <Bell className="w-4 h-4 text-primary" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-black/90 backdrop-blur-2xl border-white/10 text-white font-tech glass-card">
+                <DialogHeader>
+                  <DialogTitle className="font-headline text-primary flex items-center gap-2 tracking-widest">
+                    <Send className="w-5 h-5" /> NOTIFICATION CHANNELS
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] text-muted-foreground">TELEGRAM BOT TOKEN</Label>
+                    <Input placeholder="HIDDEN" type="password" className="bg-black/50 border-white/10 text-xs h-10 rounded-lg" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] text-muted-foreground">WHATSAPP API KEY (META/GREEN)</Label>
+                    <Input placeholder="WA_AUTH_XXXXX" type="password" className="bg-black/50 border-white/10 text-xs h-10 rounded-lg" />
+                  </div>
+                  <div className="flex items-center justify-between p-3 glass-card rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="w-4 h-4 text-primary" />
+                      <span className="text-[10px]">Failover to Telegram if WhatsApp limits reached</span>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px]">CHAT ID</Label>
-                  <Input placeholder="92312..." className="bg-black/50 border-white/10 text-xs h-10 rounded-lg" />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button className="bg-primary text-black hover:bg-primary/80 w-full font-headline tracking-widest py-6">SECURE HANDSHAKE</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter>
+                  <Button className="bg-primary text-black hover:bg-primary/80 w-full font-headline tracking-widest py-6">SAVE CHANNELS</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
 
           <Button 
             variant="ghost" 
@@ -326,11 +396,68 @@ export default function Dashboard() {
         </div>
       </header>
 
+      {/* WhatsApp Linker Dialog */}
+      <Dialog open={isWADialogOpen} onOpenChange={setIsWADialogOpen}>
+        <DialogContent className="bg-black/95 backdrop-blur-3xl border-primary/30 text-white font-tech glass-card max-w-sm">
+          <DialogHeader className="items-center text-center">
+            <DialogTitle className="font-headline text-xl text-primary tracking-widest uppercase">WhatsApp Sync</DialogTitle>
+            <p className="text-[10px] text-muted-foreground uppercase mt-2">Pair your device for real-time FinOps alerts.</p>
+          </DialogHeader>
+          
+          <div className="flex flex-col items-center py-8 space-y-6">
+            <div className="relative w-64 h-64 bg-white rounded-3xl p-6 shadow-[0_0_50px_rgba(0,191,255,0.2)] flex items-center justify-center overflow-hidden">
+              {waStatus === 'LOGGING_OUT' || waStatus === 'FETCHING_QR' ? (
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="w-10 h-10 text-black animate-spin" />
+                  <span className="text-black text-[10px] font-bold uppercase tracking-widest">Initializing...</span>
+                </div>
+              ) : waStatus === 'WAITING_SCAN' ? (
+                <div className="relative group cursor-pointer" onClick={generateNewQR}>
+                  <img 
+                    src={waQR!} 
+                    alt="Scan Me" 
+                    className="w-full h-full object-cover rounded-lg"
+                    data-ai-hint="qr code"
+                  />
+                  <div className="absolute inset-0 bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <RefreshCw className="w-8 h-8 text-black/50" />
+                  </div>
+                </div>
+              ) : waStatus === 'CONNECTED' ? (
+                <div className="flex flex-col items-center gap-4 animate-in zoom-in-50 duration-500">
+                  <div className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.5)]">
+                    <SuccessIcon className="w-12 h-12 text-white" />
+                  </div>
+                  <span className="text-green-600 font-headline text-lg tracking-widest">AUTHORIZED</span>
+                </div>
+              ) : null}
+            </div>
+
+            {waStatus === 'WAITING_SCAN' && (
+              <div className="w-full space-y-2 text-center">
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground px-2">
+                  <span>QR REFRESHES IN:</span>
+                  <span className="text-primary font-bold">{qrRefreshTimer}s</span>
+                </div>
+                <Progress value={(qrRefreshTimer / 20) * 100} className="h-1 bg-white/10" />
+                <p className="text-[9px] text-muted-foreground mt-4 leading-relaxed uppercase">
+                  Open WhatsApp > Settings > Linked Devices > Link a Device
+                </p>
+              </div>
+            )}
+
+            {waStatus === 'CONNECTED' && (
+              <Button onClick={() => setIsWADialogOpen(false)} className="w-full bg-primary text-black hover:bg-primary/80 font-headline py-6">CONTINUE TO CORE</Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Biometric Security Dialog */}
       <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
         <DialogContent className="bg-black/95 backdrop-blur-3xl border-primary/30 text-white font-tech glass-card max-w-sm">
           <DialogHeader className="items-center text-center">
-            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4 border border-primary/20 animate-pulse-neon">
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4 border border-primary/20">
               <Fingerprint className="w-10 h-10 text-primary" />
             </div>
             <DialogTitle className="font-headline text-xl text-primary tracking-widest">IDENTITY VERIFICATION</DialogTitle>
@@ -363,16 +490,16 @@ export default function Dashboard() {
         <StatCard title="LEAKAGE" value={`$${shadowResources.reduce((a,b)=>a+b.saving,0).toFixed(2)}`} icon={<Ghost className="w-5 h-5 text-secondary" />} sub={`${shadowResources.length} ZOMBIE UNITS`} />
         <StatCard title="UNIT COST" value={`$0.30`} icon={<TrendingDown className="w-5 h-5 text-primary" />} sub="30-DAY EFFICIENCY UP" />
         <StatCard title="GPU BURN" value={`$5.55/hr`} icon={<Zap className="w-5 h-5 text-yellow-400" />} sub="SPOT SUGGESTIONS ACTIVE" />
-        <StatCard title="DRIFT" value={`+$12.00`} icon={<Activity className="w-5 h-5 text-purple-400" />} sub="PIPELINE IMPACT" />
+        <StatCard title="WA SYNC" value={isGhostMode ? "HIDDEN" : waStatus === 'CONNECTED' ? "LINKED" : "OFFLINE"} icon={<MessageSquare className="w-5 h-5 text-primary" />} sub={waStatus === 'CONNECTED' ? "WEBHOOKS AUTHORIZED" : "AWAITING AUTH"} />
         <StatCard title="GREEN SCORE" value={`98/100`} icon={<Leaf className="w-5 h-5 text-primary" />} sub="MONTREAL SYNCED" />
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6" onValueChange={setActiveTab}>
         <TabsList className="bg-white/5 backdrop-blur-md border border-white/10 p-1 flex-wrap h-auto rounded-full">
-          <TabsTrigger value="overview" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-tech text-[10px] rounded-full px-6">ECONOMICS</TabsTrigger>
-          <TabsTrigger value="trends" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-tech text-[10px] rounded-full px-6">6-MONTH ANALYTICS</TabsTrigger>
-          <TabsTrigger value="shadow" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary font-tech text-[10px] rounded-full px-6">SHADOW SCAN</TabsTrigger>
-          <TabsTrigger value="green" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-tech text-[10px] rounded-full px-6">GREEN OPS</TabsTrigger>
+          <TabsTrigger value="overview" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-tech text-[10px] rounded-full px-6 uppercase tracking-wider">Economics</TabsTrigger>
+          <TabsTrigger value="trends" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-tech text-[10px] rounded-full px-6 uppercase tracking-wider">6-Month Analytics</TabsTrigger>
+          <TabsTrigger value="shadow" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary font-tech text-[10px] rounded-full px-6 uppercase tracking-wider">Shadow Scan</TabsTrigger>
+          <TabsTrigger value="green" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-tech text-[10px] rounded-full px-6 uppercase tracking-wider">Green Ops</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="animate-in fade-in slide-in-from-bottom-2">
@@ -394,8 +521,8 @@ export default function Dashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                    <XAxis dataKey="name" stroke="#666" fontSize={10} axisLine={false} tickLine={false} fontClassName="font-tech" />
-                    <YAxis stroke="#666" fontSize={10} axisLine={false} tickLine={false} fontClassName="font-tech" />
+                    <XAxis dataKey="name" stroke="#666" fontSize={10} axisLine={false} tickLine={false} />
+                    <YAxis stroke="#666" fontSize={10} axisLine={false} tickLine={false} />
                     <Tooltip contentStyle={{backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)', borderRadius: '12px'}} />
                     <Area type="monotone" dataKey="cost" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorPrimary)" strokeWidth={3} />
                   </AreaChart>
@@ -564,7 +691,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="pt-6 h-56 flex flex-col">
             <div className="flex-1 overflow-y-auto space-y-1 font-tech text-[10px] text-muted-foreground/80 mb-6">
-              <p><span className="text-primary">[SYSTEM]</span> Sentinel Kernel v5.0 established. Biometric layer active.</p>
+              <p><span className="text-primary">[SYSTEM]</span> Sentinel Kernel v5.0 established. WhatsApp sync: {waStatus}.</p>
               <p><span className="text-primary">[SYSTEM]</span> Unit Economics anomaly detection: Cost/User dropped 5% in Jun.</p>
               <p><span className="text-secondary">[SHADOW]</span> Found {shadowResources.length} orphaned resources costing ${shadowResources.reduce((a,b)=>a+b.saving,0).toFixed(2)}/mo.</p>
               {isGhostMode && <p className="text-primary animate-pulse">[STEALTH] Network obfuscation active. Agent: Mozilla/5.0 (Stealth-mode-v5).</p>}
@@ -574,7 +701,7 @@ export default function Dashboard() {
               <Input 
                 value={terminalInput}
                 onChange={(e) => setTerminalInput(e.target.value)}
-                placeholder="EXECUTE PROTOCOL (e.g., /status)..."
+                placeholder="EXECUTE PROTOCOL (e.g., /status, /report)..."
                 className="bg-black/40 border-white/10 pl-10 font-tech text-[10px] h-11 rounded-full focus:border-primary/50 tracking-widest placeholder:opacity-30"
               />
             </form>
