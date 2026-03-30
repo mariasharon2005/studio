@@ -1,16 +1,17 @@
+
 "use client"
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell 
 } from 'recharts';
 import { 
   Ghost, Leaf, TrendingDown, LogOut, 
-  Bell, Send, ShieldAlert, Zap, BarChart3, Globe, Trash2, CheckCircle2, Loader2, Info,
+  Bell, Send, Zap, BarChart3, Globe, Trash2, CheckCircle2, Loader2, Info,
   Terminal, Cpu, Activity, EyeOff, ShieldCheck,
-  Fingerprint, FileText, Download, AlertTriangle, MessageSquare, Smartphone,
-  CheckCircle2 as SuccessIcon, ArrowRight, ExternalLink
+  Fingerprint, Download, AlertTriangle, MessageSquare, Smartphone,
+  CheckCircle2 as SuccessIcon, ArrowRight, ExternalLink, IndianRupee, CreditCard, Wallet
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -23,11 +24,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { Slider } from '@/components/ui/slider';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { cn } from '@/lib/utils';
 import { jsPDF } from 'jspdf';
+import { QRCodeSVG } from 'qrcode.react';
 
 // 6-Month Mock Data
 const sixMonthTrends = [
@@ -65,6 +68,30 @@ export default function Dashboard() {
   const [waStatus, setWaStatus] = useState<'IDLE' | 'ENTER_PHONE' | 'FETCHING_CODE' | 'DISPLAY_CODE' | 'CONNECTED'>('IDLE');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [pairingCode, setPairingCode] = useState('');
+
+  // FinTech State
+  const [loanPrincipal, setLoanPrincipal] = useState(50000);
+  const [loanTenure, setLoanTenure] = useState(12);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<'IDLE' | 'PAYING' | 'SUCCESS'>('IDLE');
+
+  const annualRate = 0.12;
+  const monthlyRate = annualRate / 12;
+
+  const emiCalculations = useMemo(() => {
+    const p = loanPrincipal;
+    const r = monthlyRate;
+    const n = loanTenure;
+    const emi = (p * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    const totalPayable = emi * n;
+    const totalInterest = totalPayable - p;
+    return {
+      emi: Math.round(emi),
+      totalPayable: Math.round(totalPayable),
+      totalInterest: Math.round(totalInterest),
+      interestRatio: Math.round((totalInterest / totalPayable) * 100)
+    };
+  }, [loanPrincipal, loanTenure]);
 
   const triggerHaptic = useCallback(() => {
     if (typeof window !== 'undefined' && window.navigator.vibrate) {
@@ -109,7 +136,6 @@ export default function Dashboard() {
   const [isMigrating, setIsMigrating] = useState(false);
   const [migrationProgress, setMigrationProgress] = useState(0);
 
-  // WhatsApp Pairing Logic
   const handleLinkWhatsApp = () => {
     setIsWADialogOpen(true);
     setWaStatus('ENTER_PHONE');
@@ -123,7 +149,6 @@ export default function Dashboard() {
     setWaStatus('FETCHING_CODE');
     
     setTimeout(() => {
-      // Simulate an 8-character code generation
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
       let code = '';
       for (let i = 0; i < 8; i++) {
@@ -134,7 +159,6 @@ export default function Dashboard() {
       setWaStatus('DISPLAY_CODE');
       triggerAudio();
       
-      // Simulate a connection after 15 seconds
       setTimeout(() => {
         setWaStatus('CONNECTED');
         toast({ title: "WHATSAPP CONNECTED", description: "Instance status: Authorized. Webhooks active." });
@@ -221,12 +245,51 @@ export default function Dashboard() {
     triggerAudio();
   };
 
+  const handleDownloadLoanReceipt = () => {
+    requireSecurity(() => {
+      const doc = new jsPDF();
+      const timestamp = new Date().toLocaleString();
+      const transactionId = `SENT-${Math.random().toString(36).substring(7).toUpperCase()}`;
+
+      doc.setFillColor(5, 5, 5);
+      doc.rect(0, 0, 210, 297, 'F');
+      doc.setTextColor(0, 191, 255);
+      doc.setFontSize(22);
+      doc.text('INFRASTRUCTURE LOAN RECEIPT', 10, 20);
+      doc.setTextColor(150, 150, 150);
+      doc.setFontSize(10);
+      doc.text(`Transaction ID: ${transactionId}`, 10, 30);
+      doc.text(`Issued: ${timestamp}`, 10, 35);
+      doc.line(10, 40, 200, 40);
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.text('Loan Details', 10, 55);
+      doc.setFontSize(11);
+      doc.text(`Principal Amount: $${loanPrincipal}`, 15, 65);
+      doc.text(`Tenure: ${loanTenure} Months`, 15, 72);
+      doc.text(`Monthly EMI: $${emiCalculations.emi}`, 15, 79);
+      doc.text(`Total Payable: $${emiCalculations.totalPayable}`, 15, 86);
+      doc.text(`Total Interest: $${emiCalculations.totalInterest}`, 15, 93);
+
+      doc.setTextColor(0, 191, 255);
+      doc.text('Payment Verification Status: VERIFIED', 10, 110);
+      
+      // Placeholder for Verification QR
+      doc.rect(150, 50, 40, 40);
+      doc.setFontSize(8);
+      doc.text('VERIFY QR', 160, 95);
+
+      doc.save(`loan_receipt_${transactionId}.pdf`);
+      toast({ title: "RECEIPT GENERATED", description: "Encrypted payment receipt ready." });
+      triggerAudio();
+    });
+  };
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
-    } catch (error) {
-      console.error("Logout failed", error);
-    }
+    } catch (error) {}
   };
 
   const purgeResource = (id: string) => {
@@ -284,6 +347,17 @@ export default function Dashboard() {
     }, 300);
   };
 
+  const handlePayment = () => {
+    requireSecurity(() => {
+      setPaymentStatus('PAYING');
+      setTimeout(() => {
+        setPaymentStatus('SUCCESS');
+        triggerAudio();
+        toast({ title: "PAYMENT SUCCESSFUL", description: "Transaction confirmed on UPI Network." });
+      }, 2500);
+    });
+  };
+
   return (
     <div className={cn(
       "min-h-screen transition-all duration-700 p-6 text-white overflow-x-hidden",
@@ -331,54 +405,17 @@ export default function Dashboard() {
             <Download className="w-3 h-3 mr-2" /> EXPORT REPORT
           </Button>
 
-          <div className="flex items-center gap-2">
-            <Button 
-              onClick={handleLinkWhatsApp}
-              variant="outline" 
-              className={cn(
-                "glass-card border-none hover:bg-white/10 rounded-full h-10 px-4 flex items-center gap-2 text-[10px] font-tech",
-                waStatus === 'CONNECTED' ? "text-green-400" : "text-primary"
-              )}
-            >
-              <MessageSquare className="w-4 h-4" /> 
-              {isGhostMode ? "LINK MASKED" : waStatus === 'CONNECTED' ? "WA: ACTIVE" : "LINK WHATSAPP"}
-            </Button>
-
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="icon" className="glass-card border-none hover:bg-white/10 rounded-full w-10 h-10">
-                  <Bell className="w-4 h-4 text-primary" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-black/90 backdrop-blur-2xl border-white/10 text-white font-tech glass-card">
-                <DialogHeader>
-                  <DialogTitle className="font-headline text-primary flex items-center gap-2 tracking-widest">
-                    <Send className="w-5 h-5" /> NOTIFICATION CHANNELS
-                  </DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] text-muted-foreground">TELEGRAM BOT TOKEN</Label>
-                    <Input placeholder="HIDDEN" type="password" className="bg-black/50 border-white/10 text-xs h-10 rounded-lg" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] text-muted-foreground">WHATSAPP API KEY (META/GREEN)</Label>
-                    <Input placeholder="WA_AUTH_XXXXX" type="password" className="bg-black/50 border-white/10 text-xs h-10 rounded-lg" />
-                  </div>
-                  <div className="flex items-center justify-between p-3 glass-card rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Smartphone className="w-4 h-4 text-primary" />
-                      <span className="text-[10px]">Failover to Telegram if WhatsApp limits reached</span>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button className="bg-primary text-black hover:bg-primary/80 w-full font-headline tracking-widest py-6">SAVE CHANNELS</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+          <Button 
+            onClick={handleLinkWhatsApp}
+            variant="outline" 
+            className={cn(
+              "glass-card border-none hover:bg-white/10 rounded-full h-10 px-4 flex items-center gap-2 text-[10px] font-tech",
+              waStatus === 'CONNECTED' ? "text-green-400" : "text-primary"
+            )}
+          >
+            <MessageSquare className="w-4 h-4" /> 
+            {isGhostMode ? "LINK MASKED" : waStatus === 'CONNECTED' ? "WA: ACTIVE" : "LINK WHATSAPP"}
+          </Button>
 
           <Button 
             variant="ghost" 
@@ -391,86 +428,40 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* WhatsApp Linker Dialog (Pairing Code Method) */}
+      {/* WhatsApp Linker Dialog */}
       <Dialog open={isWADialogOpen} onOpenChange={setIsWADialogOpen}>
         <DialogContent className="bg-black/95 backdrop-blur-3xl border-primary/30 text-white font-tech glass-card max-w-md">
           <DialogHeader className="items-center text-center">
             <DialogTitle className="font-headline text-xl text-primary tracking-widest uppercase">WhatsApp Pairing</DialogTitle>
-            <p className="text-[10px] text-muted-foreground uppercase mt-2">Link with phone number for single-device mobile access.</p>
           </DialogHeader>
-          
           <div className="flex flex-col items-center py-6 space-y-6">
             {waStatus === 'ENTER_PHONE' && (
               <div className="w-full space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-[10px] text-muted-foreground uppercase">Phone Number (with Country Code)</Label>
-                  <Input 
-                    type="tel"
-                    placeholder="+91 98765-43210"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="bg-black/50 border-white/10 text-center text-lg h-14"
-                  />
-                </div>
-                <Button 
-                  onClick={generatePairingCode}
-                  className="w-full bg-primary text-black hover:bg-primary/80 font-headline py-6 tracking-widest"
-                >
-                  GENERATE PAIRING CODE <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
+                <Input 
+                  type="tel"
+                  placeholder="+91 98765-43210"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  className="bg-black/50 border-white/10 text-center text-lg h-14"
+                />
+                <Button onClick={generatePairingCode} className="w-full bg-primary text-black hover:bg-primary/80 font-headline py-6">GENERATE CODE</Button>
               </div>
             )}
-
-            {waStatus === 'FETCHING_CODE' && (
-              <div className="flex flex-col items-center gap-4 py-8">
-                <Loader2 className="w-12 h-12 text-primary animate-spin" />
-                <span className="text-[10px] uppercase font-tech tracking-widest">Handshaking with WhatsApp Node...</span>
-              </div>
-            )}
-
+            {waStatus === 'FETCHING_CODE' && <Loader2 className="w-12 h-12 text-primary animate-spin" />}
             {waStatus === 'DISPLAY_CODE' && (
-              <div className="w-full space-y-8 animate-in zoom-in-95 duration-300">
-                <div className="glass-card p-10 rounded-3xl border-primary/20 text-center shadow-[0_0_50px_rgba(0,191,255,0.15)]">
+              <div className="w-full space-y-6 text-center">
+                <div className="glass-card p-10 rounded-3xl border-primary/20">
                   <span className="text-5xl font-code text-primary neon-text tracking-widest">{pairingCode}</span>
-                  <p className="text-[10px] text-muted-foreground uppercase mt-6 font-tech">Enter this code on your device</p>
                 </div>
-                
-                <div className="space-y-4">
-                  <Button 
-                    onClick={openWhatsAppLinking}
-                    variant="outline"
-                    className="w-full glass-card border-white/10 hover:bg-white/5 font-headline py-6 flex items-center justify-center gap-2"
-                  >
-                    <ExternalLink className="w-4 h-4" /> OPEN WHATSAPP SETTINGS
-                  </Button>
-                  
-                  <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl space-y-2">
-                    <p className="text-[9px] text-muted-foreground leading-relaxed uppercase">
-                      1. Open WhatsApp &gt; Settings &gt; Linked Devices<br/>
-                      2. Tap "Link a Device"<br/>
-                      3. Tap "Link with phone number instead"<br/>
-                      4. Enter the 8-character code shown above
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground font-tech">
-                  <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                  <span>WAITING FOR DEVICE AUTHORIZATION...</span>
-                </div>
+                <p className="text-[10px] text-muted-foreground uppercase font-tech">Enter this code in WhatsApp Settings &gt; Linked Devices</p>
+                <Button onClick={openWhatsAppLinking} variant="outline" className="w-full glass-card border-white/10">OPEN WHATSAPP SETTINGS</Button>
               </div>
             )}
-
             {waStatus === 'CONNECTED' && (
-              <div className="flex flex-col items-center gap-6 py-8 animate-in zoom-in-50 duration-500">
-                <div className="w-24 h-24 rounded-full bg-green-500 flex items-center justify-center shadow-[0_0_40px_rgba(34,197,94,0.4)]">
-                  <SuccessIcon className="w-14 h-14 text-white" />
-                </div>
-                <div className="text-center">
-                  <h3 className="text-green-500 font-headline text-2xl tracking-widest uppercase">Authorized</h3>
-                  <p className="text-[10px] text-muted-foreground uppercase mt-2">WhatsApp session established via pairing code.</p>
-                </div>
-                <Button onClick={() => setIsWADialogOpen(false)} className="w-full bg-primary text-black hover:bg-primary/80 font-headline py-6 mt-4">CONTINUE TO CORE</Button>
+              <div className="flex flex-col items-center gap-6 animate-in zoom-in-50 duration-500">
+                <SuccessIcon className="w-20 h-20 text-green-500" />
+                <h3 className="text-green-500 font-headline text-2xl tracking-widest">AUTHORIZED</h3>
+                <Button onClick={() => setIsWADialogOpen(false)} className="bg-primary text-black">CONTINUE</Button>
               </div>
             )}
           </div>
@@ -484,16 +475,13 @@ export default function Dashboard() {
             <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4 border border-primary/20">
               <Fingerprint className="w-10 h-10 text-primary" />
             </div>
-            <DialogTitle className="font-headline text-xl text-primary tracking-widest">IDENTITY VERIFICATION</DialogTitle>
-            <p className="text-[10px] text-muted-foreground uppercase mt-2">Biometric check required for privileged operations.</p>
+            <DialogTitle className="font-headline text-xl text-primary tracking-widest uppercase">Identity Verification</DialogTitle>
           </DialogHeader>
-          <div className="py-6 space-y-6">
-            <Button onClick={handleBiometricAuth} className="w-full bg-primary text-black hover:bg-primary/80 font-headline py-6 flex items-center justify-center gap-2">
-              <ShieldCheck className="w-5 h-5" /> TRIGGER WEBAUTHN
-            </Button>
+          <div className="py-6 space-y-6 text-center">
+            <Button onClick={handleBiometricAuth} className="w-full bg-primary text-black hover:bg-primary/80 font-headline py-6">TRIGGER WEBAUTHN</Button>
             <div className="relative">
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/10"></span></div>
-              <div className="relative flex justify-center text-[9px] uppercase"><span className="bg-black px-2 text-muted-foreground">Or Use PIN</span></div>
+              <div className="relative flex justify-center text-[9px] uppercase"><span className="bg-black px-2 text-muted-foreground">Fallback</span></div>
             </div>
             <form onSubmit={handlePinAuth} className="space-y-3">
               <Input 
@@ -501,10 +489,10 @@ export default function Dashboard() {
                 maxLength={6} 
                 value={pinInput}
                 onChange={(e) => setPinInput(e.target.value)}
-                placeholder="6-DIGIT PIN (try 123456)" 
+                placeholder="6-DIGIT PIN" 
                 className="bg-black/50 border-white/10 text-center tracking-[1em] h-12 text-lg" 
               />
-              <Button type="submit" variant="outline" className="w-full border-white/10 text-xs hover:bg-white/5">CONFIRM FALLBACK</Button>
+              <Button type="submit" variant="outline" className="w-full border-white/10">VERIFY PIN</Button>
             </form>
           </div>
         </DialogContent>
@@ -514,26 +502,25 @@ export default function Dashboard() {
         <StatCard title="LEAKAGE" value={`$${shadowResources.reduce((a,b)=>a+b.saving,0).toFixed(2)}`} icon={<Ghost className="w-5 h-5 text-secondary" />} sub={`${shadowResources.length} ZOMBIE UNITS`} />
         <StatCard title="UNIT COST" value={`$0.30`} icon={<TrendingDown className="w-5 h-5 text-primary" />} sub="30-DAY EFFICIENCY UP" />
         <StatCard title="GPU BURN" value={`$${gpuNodes.reduce((acc, n) => acc + n.hourlyCost, 0).toFixed(2)}/hr`} icon={<Zap className="w-5 h-5 text-yellow-400" />} sub="SPOT SUGGESTIONS ACTIVE" />
-        <StatCard title="WA SYNC" value={isGhostMode ? "HIDDEN" : waStatus === 'CONNECTED' ? "LINKED" : "OFFLINE"} icon={<MessageSquare className="w-5 h-5 text-primary" />} sub={waStatus === 'CONNECTED' ? "WEBHOOKS AUTHORIZED" : "AWAITING AUTH"} />
+        <StatCard title="LOAN EMI" value={`$${emiCalculations.emi}`} icon={<IndianRupee className="w-5 h-5 text-primary" />} sub="FINANCING ACTIVE" />
         <StatCard title="GREEN SCORE" value={`98/100`} icon={<Leaf className="w-5 h-5 text-primary" />} sub="MONTREAL SYNCED" />
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6" onValueChange={setActiveTab}>
         <TabsList className="bg-white/5 backdrop-blur-md border border-white/10 p-1 flex-wrap h-auto rounded-full">
           <TabsTrigger value="overview" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-tech text-[10px] rounded-full px-6 uppercase tracking-wider">Economics</TabsTrigger>
-          <TabsTrigger value="trends" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-tech text-[10px] rounded-full px-6 uppercase tracking-wider">6-Month Analytics</TabsTrigger>
+          <TabsTrigger value="fintech" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-tech text-[10px] rounded-full px-6 uppercase tracking-wider">Infrastructure Capital</TabsTrigger>
           <TabsTrigger value="shadow" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary font-tech text-[10px] rounded-full px-6 uppercase tracking-wider">Shadow Scan</TabsTrigger>
           <TabsTrigger value="gpu" className="data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-500 font-tech text-[10px] rounded-full px-6 uppercase tracking-wider">GPU Sentinel</TabsTrigger>
           <TabsTrigger value="green" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-tech text-[10px] rounded-full px-6 uppercase tracking-wider">Green Ops</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="animate-in fade-in slide-in-from-bottom-2">
+        <TabsContent value="overview">
           <Card className="glass-card mb-6 border-primary/20">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="font-headline text-sm text-primary flex items-center gap-2 uppercase tracking-widest">
                 <Activity className="w-4 h-4" /> Real-time Pulse
               </CardTitle>
-              <Badge variant="outline" className="border-primary/50 text-primary font-tech backdrop-blur-md">KERNEL STABLE</Badge>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -557,91 +544,169 @@ export default function Dashboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="trends" className="animate-in fade-in slide-in-from-bottom-2">
+        <TabsContent value="fintech" className="animate-in fade-in slide-in-from-bottom-2">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="glass-card border-primary/20">
               <CardHeader>
-                <CardTitle className="font-headline text-sm text-primary flex items-center gap-2 uppercase tracking-widest">
-                  <BarChart3 className="w-4 h-4" /> Historical Cost/User (180d)
+                <CardTitle className="font-headline text-lg text-primary flex items-center gap-2 uppercase tracking-widest">
+                  <IndianRupee className="w-5 h-5" /> INFRASTRUCTURE LOAN CALCULATOR
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={sixMonthTrends}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                      <XAxis dataKey="name" stroke="#666" fontSize={10} axisLine={false} tickLine={false} />
-                      <YAxis stroke="#666" fontSize={10} axisLine={false} tickLine={false} />
-                      <Tooltip contentStyle={{backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)', borderRadius: '12px'}} />
-                      <Line type="monotone" dataKey="efficiency" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ fill: 'hsl(var(--primary))', r: 4 }} activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
+              <CardContent className="space-y-10">
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-[10px] text-muted-foreground uppercase font-tech tracking-widest">Principal Amount</Label>
+                      <span className="text-primary font-tech text-lg">${loanPrincipal}</span>
+                    </div>
+                    <Slider 
+                      value={[loanPrincipal]} 
+                      min={1000} 
+                      max={200000} 
+                      step={1000} 
+                      onValueChange={(v) => setLoanPrincipal(v[0])}
+                      className="py-4"
+                    />
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-[10px] text-muted-foreground uppercase font-tech tracking-widest">Tenure (Months)</Label>
+                      <span className="text-primary font-tech text-lg">{loanTenure}M</span>
+                    </div>
+                    <Slider 
+                      value={[loanTenure]} 
+                      min={6} 
+                      max={60} 
+                      step={6} 
+                      onValueChange={(v) => setLoanTenure(v[0])}
+                      className="py-4"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="p-4 glass-card rounded-2xl border-white/5 text-center">
+                    <p className="text-[8px] text-muted-foreground uppercase mb-1">Monthly EMI</p>
+                    <p className="text-xl font-headline text-primary">${emiCalculations.emi}</p>
+                  </div>
+                  <div className="p-4 glass-card rounded-2xl border-white/5 text-center">
+                    <p className="text-[8px] text-muted-foreground uppercase mb-1">Total Payable</p>
+                    <p className="text-xl font-headline text-white">${emiCalculations.totalPayable}</p>
+                  </div>
+                  <div className="p-4 glass-card rounded-2xl border-white/5 text-center">
+                    <p className="text-[8px] text-muted-foreground uppercase mb-1">Interest</p>
+                    <p className="text-xl font-headline text-secondary">${emiCalculations.totalInterest}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="glass-card border-secondary/20">
+            <Card className="glass-card border-secondary/20 relative overflow-hidden">
               <CardHeader>
-                <CardTitle className="font-headline text-sm text-secondary flex items-center gap-2 uppercase tracking-widest">
-                  <TrendingDown className="w-4 h-4" /> Growth Efficiency Ratio
+                <CardTitle className="font-headline text-lg text-secondary flex items-center gap-2 uppercase tracking-widest">
+                  <Wallet className="w-5 h-5" /> REPAYMENT RATIO & GATEWAY
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="h-64">
+              <CardContent className="flex flex-col items-center justify-center space-y-8">
+                <div className="relative w-48 h-48">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={sixMonthTrends}>
-                      <XAxis dataKey="name" stroke="#666" fontSize={10} axisLine={false} tickLine={false} />
-                      <YAxis stroke="#666" fontSize={10} axisLine={false} tickLine={false} />
-                      <Tooltip contentStyle={{backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)', borderRadius: '12px'}} />
-                      <Area type="monotone" dataKey="users" stackId="1" stroke="hsl(var(--secondary))" fill="hsl(var(--secondary))" fillOpacity={0.2} strokeWidth={2} />
-                    </AreaChart>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Principal', value: loanPrincipal },
+                          { name: 'Interest', value: emiCalculations.totalInterest }
+                        ]}
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        <Cell fill="hsl(var(--primary))" />
+                        <Cell fill="hsl(var(--secondary))" />
+                      </Pie>
+                    </PieChart>
                   </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <p className="text-[8px] text-muted-foreground uppercase">Interest Ratio</p>
+                    <p className="text-2xl font-headline text-secondary">{emiCalculations.interestRatio}%</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 w-full">
+                  <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="flex-1 bg-primary text-black hover:bg-primary/80 font-headline py-6 tracking-widest">
+                        PAY EMI <CreditCard className="w-4 h-4 ml-2" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-black/95 backdrop-blur-3xl border-primary/30 text-white font-tech glass-card max-w-sm">
+                      <DialogHeader className="items-center text-center">
+                        <DialogTitle className="font-headline text-xl text-primary tracking-widest uppercase">UPI SECURE GATEWAY</DialogTitle>
+                        <p className="text-[10px] text-muted-foreground mt-2">Scan with any UPI app to pay ${emiCalculations.emi}</p>
+                      </DialogHeader>
+                      <div className="flex flex-col items-center py-6 space-y-6">
+                        {paymentStatus === 'IDLE' ? (
+                          <>
+                            <div className="p-6 bg-white rounded-3xl">
+                              <QRCodeSVG 
+                                value={`upi://pay?pa=sentinel@ops&pn=SentinelOps&am=${emiCalculations.emi}&cu=USD&tn=LoanEMI-${Date.now()}`} 
+                                size={180}
+                                level="H"
+                              />
+                            </div>
+                            <Button onClick={handlePayment} className="w-full bg-primary text-black hover:bg-primary/80 font-headline py-6">I HAVE PAID</Button>
+                          </>
+                        ) : paymentStatus === 'PAYING' ? (
+                          <div className="py-12 flex flex-col items-center gap-4">
+                            <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                            <p className="text-[10px] uppercase tracking-widest">Verifying Transaction...</p>
+                          </div>
+                        ) : (
+                          <div className="py-12 flex flex-col items-center gap-6 animate-in zoom-in-50 duration-500">
+                            <SuccessIcon className="w-20 h-20 text-green-500 neon-text" />
+                            <h3 className="text-green-500 font-headline text-2xl tracking-widest uppercase">Payment Verified</h3>
+                            <Button onClick={() => setIsPaymentDialogOpen(false)} className="bg-primary text-black w-full">DONE</Button>
+                          </div>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Button 
+                    onClick={handleDownloadLoanReceipt}
+                    variant="outline" 
+                    className="flex-1 glass-card border-white/10 text-white font-headline py-6 tracking-widest"
+                  >
+                    DOWNLOAD RECEIPT <Download className="w-4 h-4 ml-2" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="shadow" className="animate-in fade-in slide-in-from-bottom-2">
+        <TabsContent value="shadow">
           <Card className="glass-card border-secondary/30">
             <CardHeader>
-              <CardTitle className="font-headline text-lg text-secondary flex items-center justify-between tracking-widest">
+              <CardTitle className="font-headline text-lg text-secondary flex items-center justify-between tracking-widest uppercase">
                 ZOMBIE INFRASTRUCTURE
-                <Badge variant="outline" className="border-secondary/50 text-secondary font-tech">{shadowResources.length} LEAKS DETECTED</Badge>
+                <Badge variant="outline" className="border-secondary/50 text-secondary font-tech">{shadowResources.length} LEAKS</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {shadowResources.map((item) => (
-                  <div key={item.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-5 glass-card rounded-2xl group hover:bg-white/10 transition-all gap-4 border-white/5">
+                  <div key={item.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-5 glass-card rounded-2xl border-white/5">
                     <div className="flex gap-4 items-center">
                       <div className="p-4 bg-secondary/10 rounded-2xl border border-secondary/20">
                         <Ghost className="w-6 h-6 text-secondary" />
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-tech text-sm text-white tracking-wider">{item.id}</p>
-                          <UITooltipProvider>
-                            <UITooltip>
-                              <TooltipTrigger><Info className="w-3 h-3 text-muted-foreground" /></TooltipTrigger>
-                              <TooltipContent className="glass-card text-[10px] max-w-xs">{item.details}</TooltipContent>
-                            </UITooltip>
-                          </UITooltipProvider>
-                        </div>
+                        <p className="font-tech text-sm text-white">{item.id}</p>
                         <p className="text-[10px] text-muted-foreground uppercase font-tech mt-1">{item.type} • {item.reason}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
-                        <p className="text-secondary font-tech text-sm neon-text">Save ${item.saving.toFixed(2)}/mo</p>
-                      </div>
-                      <Button 
-                        onClick={() => purgeResource(item.id)}
-                        variant="destructive" size="sm" className="h-10 px-6 text-[10px] font-headline bg-secondary hover:bg-secondary/80 rounded-full tracking-widest"
-                      >
-                        PURGE <Trash2 className="w-3 h-3 ml-1" />
-                      </Button>
-                    </div>
+                    <Button onClick={() => purgeResource(item.id)} variant="destructive" className="bg-secondary">PURGE</Button>
                   </div>
                 ))}
               </div>
@@ -649,108 +714,41 @@ export default function Dashboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="gpu" className="animate-in fade-in slide-in-from-bottom-2">
+        <TabsContent value="gpu">
           <Card className="glass-card border-yellow-500/30">
             <CardHeader>
-              <CardTitle className="font-headline text-lg text-yellow-500 flex items-center gap-2 tracking-widest uppercase">
-                <Cpu className="w-6 h-6" /> GPU Sentinel
-              </CardTitle>
+              <CardTitle className="font-headline text-lg text-yellow-500 uppercase tracking-widest">GPU Sentinel</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {gpuNodes.map((node) => (
-                  <div key={node.id} className={cn(
-                    "flex flex-col md:flex-row items-start md:items-center justify-between p-5 glass-card rounded-2xl gap-4 border-white/5",
-                    node.isEmergency && "border-destructive/30 bg-destructive/5"
-                  )}>
-                    <div className="flex gap-4 items-center">
-                      <div className={cn(
-                        "p-4 rounded-2xl border",
-                        node.isEmergency ? "bg-destructive/10 border-destructive/20" : "bg-yellow-500/10 border-yellow-500/20"
-                      )}>
-                        <Zap className={cn("w-6 h-6", node.isEmergency ? "text-destructive" : "text-yellow-500")} />
-                      </div>
-                      <div>
-                        <p className="font-tech text-sm text-white tracking-wider">{node.id}</p>
-                        <p className="text-[10px] text-muted-foreground uppercase font-tech mt-1">{node.type} • {node.utilization}% Utilization</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
-                        <p className="text-yellow-500 font-tech text-sm">${node.hourlyCost}/hr</p>
-                      </div>
-                      {node.isEmergency && (
-                        <Button 
-                          onClick={() => {
-                            requireSecurity(() => {
-                              setGpuNodes(prev => prev.map(n => n.id === node.id ? {...n, isEmergency: false, hourlyCost: 1.10, type: node.type + " (Spot)"} : n));
-                              toast({ title: "GPU OPTIMIZED", description: "Switched to Spot instance." });
-                            });
-                          }}
-                          className="h-10 px-6 text-[10px] font-headline bg-yellow-600 hover:bg-yellow-500 rounded-full tracking-widest text-black"
-                        >
-                          OPTIMIZE NOW
-                        </Button>
-                      )}
+            <CardContent className="space-y-4">
+              {gpuNodes.map((node) => (
+                <div key={node.id} className={cn("p-5 glass-card rounded-2xl flex justify-between items-center border-white/5", node.isEmergency && "border-destructive/30")}>
+                  <div className="flex gap-4 items-center">
+                    <Zap className={cn("w-6 h-6", node.isEmergency ? "text-destructive" : "text-yellow-500")} />
+                    <div>
+                      <p className="font-tech text-sm">{node.id}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase">{node.type} • {node.utilization}%</p>
                     </div>
                   </div>
-                ))}
-              </div>
+                  <p className="text-yellow-500 font-tech">${node.hourlyCost}/hr</p>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="green" className="animate-in fade-in slide-in-from-bottom-2">
+        <TabsContent value="green">
           <Card className="glass-card border-primary/30">
             <CardHeader>
-              <CardTitle className="font-headline text-lg text-primary flex items-center gap-2 uppercase tracking-widest">
-                <Globe className="w-6 h-6" /> Sustainability Pulse
-              </CardTitle>
+              <CardTitle className="font-headline text-lg text-primary uppercase tracking-widest">Green Ops</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                <div className="space-y-6">
-                  <div className="p-6 glass-card rounded-2xl border-white/5">
-                    <p className="text-[10px] text-muted-foreground mb-2 uppercase font-tech">Active Deployment Region</p>
-                    <div className="flex justify-between items-center">
-                      <p className="font-headline text-xl text-white tracking-widest">{currentRegion.name}</p>
-                      <p className="font-tech text-xs text-primary neon-text">{currentRegion.intensity}</p>
-                    </div>
-                  </div>
-                  {currentRegion.id !== 'CA-Central-1' && (
-                    <div className="p-6 bg-primary/10 border border-primary/30 rounded-2xl border-dashed">
-                      <p className="text-[10px] text-primary mb-2 uppercase font-headline tracking-widest flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4" /> AI Recommendation
-                      </p>
-                      <p className="font-tech text-xs text-white/80 leading-relaxed">Infrastructure drift detected. Transitioning to Montreal will reduce carbon intensity by 40% with zero cost increase.</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-col justify-center items-center text-center p-12 glass-card rounded-3xl border-primary/20 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-white/5">
-                    {isMigrating && <div className="h-full bg-primary animate-boot-line" style={{ width: `${migrationProgress}%` }}></div>}
-                  </div>
-                  {isMigrating ? (
-                    <div className="w-full space-y-6">
-                      <Loader2 className="w-12 h-12 text-primary mx-auto animate-spin" />
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-[10px] font-tech text-primary tracking-[0.2em]">
-                          <span>SYNCING DATA-NODES...</span>
-                          <span>{migrationProgress}%</span>
-                        </div>
-                        <Progress value={migrationProgress} className="h-1 bg-white/10" />
-                      </div>
-                    </div>
-                  ) : currentRegion.id === 'CA-Central-1' ? (
-                    <div className="space-y-4">
-                      <ShieldCheck className="w-16 h-16 text-primary mx-auto neon-text" />
-                      <h3 className="text-2xl font-headline text-primary tracking-[0.2em]">SUSTAINABLE SYNCED</h3>
-                    </div>
-                  ) : (
-                    <Button onClick={handleInitiateMigration} className="w-full bg-primary text-black hover:bg-primary/80 font-headline rounded-full py-8 text-xl tracking-[0.2em] shadow-[0_0_30px_rgba(0,191,255,0.3)]">ENACT MIGRATION</Button>
-                  )}
-                </div>
+              <div className="flex flex-col items-center justify-center p-12 text-center">
+                <Globe className="w-16 h-16 text-primary mb-6" />
+                <h3 className="text-2xl font-headline mb-2">{currentRegion.name}</h3>
+                <p className="text-primary font-tech mb-8">{currentRegion.intensity}</p>
+                {currentRegion.id !== 'CA-Central-1' && (
+                  <Button onClick={handleInitiateMigration} className="bg-primary text-black font-headline px-12 py-8">ENACT MIGRATION</Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -763,23 +761,20 @@ export default function Dashboard() {
             <CardTitle className="font-tech text-[10px] text-muted-foreground uppercase tracking-[0.3em] flex items-center gap-2">
               <Terminal className="w-3 h-3" /> Secure Console [TTY1]
             </CardTitle>
-            <Activity className="w-3 h-3 text-primary animate-pulse" />
           </CardHeader>
           <CardContent className="pt-6 h-56 flex flex-col">
             <div className="flex-1 overflow-y-auto space-y-1 font-tech text-[10px] text-muted-foreground/80 mb-6">
-              <p><span className="text-primary">[SYSTEM]</span> Sentinel Kernel v5.0 established. WhatsApp sync: {waStatus}.</p>
-              <p><span className="text-primary">[SYSTEM]</span> Unit Economics anomaly detection: Cost/User dropped 5% in Jun.</p>
-              <p><span className="text-secondary">[SHADOW]</span> Found {shadowResources.length} orphaned resources costing ${shadowResources.reduce((a,b)=>a+b.saving,0).toFixed(2)}/mo.</p>
-              {gpuNodes.some(n => n.isEmergency) && <p className="text-destructive">[ALERT] GPU utilization critically low &lt;5% on {gpuNodes.find(n => n.isEmergency)?.id}.</p>}
-              {isGhostMode && <p className="text-primary animate-pulse">[STEALTH] Network obfuscation active. Agent: Mozilla/5.0 (Stealth-mode-v5).</p>}
+              <p><span className="text-primary">[SYSTEM]</span> Sentinel Kernel v5.0 stable.</p>
+              <p><span className="text-primary">[FINTECH]</span> Infrastructure loan interest ratio calibrated: {emiCalculations.interestRatio}%.</p>
+              {paymentStatus === 'SUCCESS' && <p className="text-green-400">[PAYMENT] UPI Transaction successful. Receipt generated.</p>}
             </div>
             <form onSubmit={handleTerminalCommand} className="relative">
               <span className="absolute left-4 top-3 text-primary font-bold text-xs opacity-50"> {'>'} </span>
               <Input 
                 value={terminalInput}
                 onChange={(e) => setTerminalInput(e.target.value)}
-                placeholder="EXECUTE PROTOCOL (e.g., /status, /report)..."
-                className="bg-black/40 border-white/10 pl-10 font-tech text-[10px] h-11 rounded-full focus:border-primary/50 tracking-widest placeholder:opacity-30"
+                placeholder="EXECUTE PROTOCOL..."
+                className="bg-black/40 border-white/10 pl-10 font-tech text-[10px] h-11 rounded-full"
               />
             </form>
           </CardContent>
@@ -792,24 +787,17 @@ export default function Dashboard() {
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <div className="flex justify-between text-[10px] font-tech uppercase tracking-widest">
-                <span>Core CPU</span>
+                <span>CPU Load</span>
                 <span className="text-primary">42%</span>
               </div>
               <Progress value={42} className="h-1 bg-white/10" />
             </div>
             <div className="space-y-2">
               <div className="flex justify-between text-[10px] font-tech uppercase tracking-widest">
-                <span>GPU Accelerator</span>
-                <span className="text-yellow-400">88%</span>
+                <span>Memory usage</span>
+                <span className="text-secondary">64%</span>
               </div>
-              <Progress value={88} className="h-1 bg-white/10" />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-[10px] font-tech uppercase tracking-widest">
-                <span>Network Masking</span>
-                <span className={isGhostMode ? "text-primary neon-text" : "text-muted-foreground"}>{isGhostMode ? "ENCRYPTED" : "UNMASKED"}</span>
-              </div>
-              <Progress value={isGhostMode ? 100 : 0} className="h-1 bg-white/10" />
+              <Progress value={64} className="h-1 bg-white/10" />
             </div>
           </CardContent>
         </Card>
