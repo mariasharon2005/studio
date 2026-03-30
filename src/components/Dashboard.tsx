@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line 
@@ -8,9 +8,9 @@ import {
 import { 
   Ghost, Leaf, TrendingDown, LogOut, 
   Bell, Send, ShieldAlert, Zap, BarChart3, Globe, Trash2, CheckCircle2, Loader2, Info,
-  GitBranch, Play, Workflow, CheckCircle, XCircle, RefreshCw, Terminal, Cpu, Activity, EyeOff, ShieldCheck,
-  Fingerprint, Lock, FileText, Download, AlertTriangle, MessageSquare, QrCode, Smartphone,
-  CheckCircle2 as SuccessIcon
+  Terminal, Cpu, Activity, EyeOff, ShieldCheck,
+  Fingerprint, FileText, Download, AlertTriangle, MessageSquare, Smartphone,
+  CheckCircle2 as SuccessIcon, ArrowRight, ExternalLink
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,6 @@ import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { cn } from '@/lib/utils';
 import { jsPDF } from 'jspdf';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 // 6-Month Mock Data
 const sixMonthTrends = [
@@ -61,11 +60,11 @@ export default function Dashboard() {
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const { toast } = useToast();
 
-  // WhatsApp Linking State
+  // WhatsApp Pairing State
   const [isWADialogOpen, setIsWADialogOpen] = useState(false);
-  const [waStatus, setWaStatus] = useState<'IDLE' | 'LOGGING_OUT' | 'FETCHING_QR' | 'WAITING_SCAN' | 'CONNECTED'>('IDLE');
-  const [waQR, setWaQR] = useState<string | null>(null);
-  const [qrRefreshTimer, setQrRefreshTimer] = useState(20);
+  const [waStatus, setWaStatus] = useState<'IDLE' | 'ENTER_PHONE' | 'FETCHING_CODE' | 'DISPLAY_CODE' | 'CONNECTED'>('IDLE');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [pairingCode, setPairingCode] = useState('');
 
   const triggerHaptic = useCallback(() => {
     if (typeof window !== 'undefined' && window.navigator.vibrate) {
@@ -110,46 +109,42 @@ export default function Dashboard() {
   const [isMigrating, setIsMigrating] = useState(false);
   const [migrationProgress, setMigrationProgress] = useState(0);
 
-  // WhatsApp QR Logic Simulation
+  // WhatsApp Pairing Logic
   const handleLinkWhatsApp = () => {
     setIsWADialogOpen(true);
-    setWaStatus('LOGGING_OUT');
+    setWaStatus('ENTER_PHONE');
+  };
+
+  const generatePairingCode = () => {
+    if (!phoneNumber) {
+      toast({ title: "ERROR", description: "Please enter a valid phone number.", variant: "destructive" });
+      return;
+    }
+    setWaStatus('FETCHING_CODE');
     
     setTimeout(() => {
-      setWaStatus('FETCHING_QR');
-      generateNewQR();
+      // Simulate an 8-character code generation
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let code = '';
+      for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+        if (i === 3) code += '-';
+      }
+      setPairingCode(code);
+      setWaStatus('DISPLAY_CODE');
+      triggerAudio();
+      
+      // Simulate a connection after 15 seconds
+      setTimeout(() => {
+        setWaStatus('CONNECTED');
+        toast({ title: "WHATSAPP CONNECTED", description: "Instance status: Authorized. Webhooks active." });
+      }, 15000);
     }, 1500);
   };
 
-  const generateNewQR = () => {
-    setWaStatus('WAITING_SCAN');
-    // Simulate fetching a fresh QR from Green API / Whapi
-    const qrImage = PlaceHolderImages.find(img => img.id === 'qr-code');
-    setWaQR(qrImage ? `${qrImage.imageUrl}?t=${Date.now()}` : null);
-    setQrRefreshTimer(20);
+  const openWhatsAppLinking = () => {
+    window.open('whatsapp://settings/linked-devices', '_blank');
   };
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (waStatus === 'WAITING_SCAN' && qrRefreshTimer > 0) {
-      timer = setInterval(() => setQrRefreshTimer(t => t - 1), 1000);
-    } else if (qrRefreshTimer === 0 && waStatus === 'WAITING_SCAN') {
-      generateNewQR();
-    }
-    return () => clearInterval(timer);
-  }, [waStatus, qrRefreshTimer]);
-
-  // Simulate Webhook Scan Success
-  useEffect(() => {
-    if (waStatus === 'WAITING_SCAN') {
-      const scanTimeout = setTimeout(() => {
-        setWaStatus('CONNECTED');
-        triggerAudio();
-        toast({ title: "WHATSAPP CONNECTED", description: "Instance status: Authorized. Webhooks active." });
-      }, 8000); // User scans after 8 seconds in this simulation
-      return () => clearTimeout(scanTimeout);
-    }
-  }, [waStatus, triggerAudio, toast]);
 
   const requireSecurity = (action: () => void) => {
     setPendingAction(() => action);
@@ -396,65 +391,87 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* WhatsApp Linker Dialog */}
+      {/* WhatsApp Linker Dialog (Pairing Code Method) */}
       <Dialog open={isWADialogOpen} onOpenChange={setIsWADialogOpen}>
-        <DialogContent className="bg-black/95 backdrop-blur-3xl border-primary/30 text-white font-tech glass-card max-w-sm">
+        <DialogContent className="bg-black/95 backdrop-blur-3xl border-primary/30 text-white font-tech glass-card max-w-md">
           <DialogHeader className="items-center text-center">
-            <DialogTitle className="font-headline text-xl text-primary tracking-widest uppercase">WhatsApp Sync</DialogTitle>
-            <p className="text-[10px] text-muted-foreground uppercase mt-2">Pair your device for real-time FinOps alerts.</p>
+            <DialogTitle className="font-headline text-xl text-primary tracking-widest uppercase">WhatsApp Pairing</DialogTitle>
+            <p className="text-[10px] text-muted-foreground uppercase mt-2">Link with phone number for single-device mobile access.</p>
           </DialogHeader>
           
-          <div className="flex flex-col items-center py-8 space-y-6">
-            <div className="relative w-64 h-64 bg-white rounded-3xl p-6 shadow-[0_0_50px_rgba(0,191,255,0.2)] flex items-center justify-center overflow-hidden">
-              {waStatus === 'LOGGING_OUT' || waStatus === 'FETCHING_QR' ? (
-                <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="w-10 h-10 text-black animate-spin" />
-                  <span className="text-black text-[10px] font-bold uppercase tracking-widest">Initializing...</span>
+          <div className="flex flex-col items-center py-6 space-y-6">
+            {waStatus === 'ENTER_PHONE' && (
+              <div className="w-full space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] text-muted-foreground uppercase">Phone Number (with Country Code)</Label>
+                  <Input 
+                    type="tel"
+                    placeholder="+91 98765-43210"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="bg-black/50 border-white/10 text-center text-lg h-14"
+                  />
                 </div>
-              ) : waStatus === 'WAITING_SCAN' ? (
-                <div className="relative group cursor-pointer" onClick={generateNewQR}>
-                  {waQR ? (
-                    <img 
-                      src={waQR} 
-                      alt="Scan Me" 
-                      className="w-full h-full object-cover rounded-lg"
-                      data-ai-hint="qr code"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 text-black/50">
-                      <QrCode className="w-12 h-12" />
-                      <span className="text-[10px] uppercase">Fetching QR...</span>
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <RefreshCw className="w-8 h-8 text-black/50" />
-                  </div>
-                </div>
-              ) : waStatus === 'CONNECTED' ? (
-                <div className="flex flex-col items-center gap-4 animate-in zoom-in-50 duration-500">
-                  <div className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.5)]">
-                    <SuccessIcon className="w-12 h-12 text-white" />
-                  </div>
-                  <span className="text-green-600 font-headline text-lg tracking-widest">AUTHORIZED</span>
-                </div>
-              ) : null}
-            </div>
+                <Button 
+                  onClick={generatePairingCode}
+                  className="w-full bg-primary text-black hover:bg-primary/80 font-headline py-6 tracking-widest"
+                >
+                  GENERATE PAIRING CODE <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            )}
 
-            {waStatus === 'WAITING_SCAN' && (
-              <div className="w-full space-y-2 text-center">
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground px-2">
-                  <span>QR REFRESHES IN:</span>
-                  <span className="text-primary font-bold">{qrRefreshTimer}s</span>
+            {waStatus === 'FETCHING_CODE' && (
+              <div className="flex flex-col items-center gap-4 py-8">
+                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                <span className="text-[10px] uppercase font-tech tracking-widest">Handshaking with WhatsApp Node...</span>
+              </div>
+            )}
+
+            {waStatus === 'DISPLAY_CODE' && (
+              <div className="w-full space-y-8 animate-in zoom-in-95 duration-300">
+                <div className="glass-card p-10 rounded-3xl border-primary/20 text-center shadow-[0_0_50px_rgba(0,191,255,0.15)]">
+                  <span className="text-5xl font-code text-primary neon-text tracking-widest">{pairingCode}</span>
+                  <p className="text-[10px] text-muted-foreground uppercase mt-6 font-tech">Enter this code on your device</p>
                 </div>
-                <Progress value={(qrRefreshTimer / 20) * 100} className="h-1 bg-white/10" />
-                <p className="text-[9px] text-muted-foreground mt-4 leading-relaxed uppercase">
-                  Open WhatsApp {' '} &gt; {' '} Settings {' '} &gt; {' '} Linked Devices {' '} &gt; {' '} Link a Device
-                </p>
+                
+                <div className="space-y-4">
+                  <Button 
+                    onClick={openWhatsAppLinking}
+                    variant="outline"
+                    className="w-full glass-card border-white/10 hover:bg-white/5 font-headline py-6 flex items-center justify-center gap-2"
+                  >
+                    <ExternalLink className="w-4 h-4" /> OPEN WHATSAPP SETTINGS
+                  </Button>
+                  
+                  <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl space-y-2">
+                    <p className="text-[9px] text-muted-foreground leading-relaxed uppercase">
+                      1. Open WhatsApp &gt; Settings &gt; Linked Devices<br/>
+                      2. Tap "Link a Device"<br/>
+                      3. Tap "Link with phone number instead"<br/>
+                      4. Enter the 8-character code shown above
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground font-tech">
+                  <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                  <span>WAITING FOR DEVICE AUTHORIZATION...</span>
+                </div>
               </div>
             )}
 
             {waStatus === 'CONNECTED' && (
-              <Button onClick={() => setIsWADialogOpen(false)} className="w-full bg-primary text-black hover:bg-primary/80 font-headline py-6">CONTINUE TO CORE</Button>
+              <div className="flex flex-col items-center gap-6 py-8 animate-in zoom-in-50 duration-500">
+                <div className="w-24 h-24 rounded-full bg-green-500 flex items-center justify-center shadow-[0_0_40px_rgba(34,197,94,0.4)]">
+                  <SuccessIcon className="w-14 h-14 text-white" />
+                </div>
+                <div className="text-center">
+                  <h3 className="text-green-500 font-headline text-2xl tracking-widest uppercase">Authorized</h3>
+                  <p className="text-[10px] text-muted-foreground uppercase mt-2">WhatsApp session established via pairing code.</p>
+                </div>
+                <Button onClick={() => setIsWADialogOpen(false)} className="w-full bg-primary text-black hover:bg-primary/80 font-headline py-6 mt-4">CONTINUE TO CORE</Button>
+              </div>
             )}
           </div>
         </DialogContent>
@@ -753,7 +770,7 @@ export default function Dashboard() {
               <p><span className="text-primary">[SYSTEM]</span> Sentinel Kernel v5.0 established. WhatsApp sync: {waStatus}.</p>
               <p><span className="text-primary">[SYSTEM]</span> Unit Economics anomaly detection: Cost/User dropped 5% in Jun.</p>
               <p><span className="text-secondary">[SHADOW]</span> Found {shadowResources.length} orphaned resources costing ${shadowResources.reduce((a,b)=>a+b.saving,0).toFixed(2)}/mo.</p>
-              {gpuNodes.some(n => n.isEmergency) && <p className="text-destructive">[ALERT] GPU utilization critically low {'('}&lt;5%{')'} on {gpuNodes.find(n => n.isEmergency)?.id}.</p>}
+              {gpuNodes.some(n => n.isEmergency) && <p className="text-destructive">[ALERT] GPU utilization critically low &lt;5% on {gpuNodes.find(n => n.isEmergency)?.id}.</p>}
               {isGhostMode && <p className="text-primary animate-pulse">[STEALTH] Network obfuscation active. Agent: Mozilla/5.0 (Stealth-mode-v5).</p>}
             </div>
             <form onSubmit={handleTerminalCommand} className="relative">
