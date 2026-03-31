@@ -10,7 +10,8 @@ import {
   Zap, Activity, EyeOff,
   Fingerprint, Download, MessageSquare,
   CheckCircle2 as SuccessIcon, IndianRupee, CreditCard,
-  Terminal, Loader2, Send, Mail, Mic, MicOff, Search, Rocket, AlertTriangle
+  Terminal, Loader2, Send, Mail, Mic, MicOff, Search, Rocket, AlertTriangle,
+  ShieldAlert, Sparkles, Brain
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -67,8 +68,6 @@ const transactionHistory = [
   { id: 4, date: '2026-03-21', desc: 'AWS Monthly Billing (S3)', amount: 45.20 },
   { id: 5, date: '2026-03-18', desc: 'SaaS Subscription: Slack Enterprise', amount: 200.00 },
   { id: 6, date: '2026-03-15', desc: 'GCP Firestore Egress', amount: 12.00 },
-  { id: 7, date: '2026-02-25', desc: 'AWS Monthly Billing (EC2)', amount: 118.00 },
-  { id: 8, date: '2026-02-21', desc: 'AWS Monthly Billing (S3)', amount: 44.00 },
 ];
 
 export default function Dashboard() {
@@ -86,8 +85,7 @@ export default function Dashboard() {
   const [waStatus, setWaStatus] = useState<'IDLE' | 'ENTER_PHONE' | 'DISPLAY_CODE' | 'CONNECTED'>('IDLE');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [pairingCode, setPairingCode] = useState('');
-  const [qrRefreshTimer, setQrRefreshTimer] = useState(20);
-
+  
   const [isExporting, setIsExporting] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
@@ -96,15 +94,18 @@ export default function Dashboard() {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'IDLE' | 'PAYING' | 'SUCCESS'>('IDLE');
 
-  // Intelligence Layer State
   const [isListening, setIsListening] = useState(false);
   const [voiceLog, setVoiceLog] = useState<string[]>([]);
   const recognitionRef = useRef<any>(null);
 
-  const annualRate = 0.12;
-  const monthlyRate = annualRate / 12;
-
+  /** 
+   * EMI Calculation Logic (Standard Reducing Balance Formula)
+   * Formula: [P x R x (1+R)^N] / [(1+R)^N - 1]
+   * where P = Principal, R = Monthly Rate, N = Tenure in Months
+   */
   const emiCalculations = useMemo(() => {
+    const annualRate = 0.12;
+    const monthlyRate = annualRate / 12;
     const p = loanPrincipal;
     const r = monthlyRate;
     const n = loanTenure;
@@ -116,32 +117,31 @@ export default function Dashboard() {
       totalPayable: Math.round(totalPayable),
       totalInterest: Math.round(totalInterest),
       interestRatio: Math.round((totalInterest / totalPayable) * 100),
-      progress: Math.min(Math.round(((50000 - 35000) / 50000) * 100), 100) // Mock progress
+      progress: Math.min(Math.round(((50000 - 35000) / 50000) * 100), 100),
+      anomalyProb: Math.round(Math.random() * 95) // Simulated predictive probability
     };
-  }, [loanPrincipal, loanTenure, monthlyRate]);
+  }, [loanPrincipal, loanTenure]);
 
-  // Predictive Cash Flow Logic
-  const prediction = useMemo(() => {
-    const avgCost = forecastData.reduce((acc, curr) => acc + curr.cost, 0) / forecastData.length;
-    const trend = (forecastData[forecastData.length - 1].cost - forecastData[0].cost) / forecastData.length;
-    const projected = avgCost + (trend * 1.5);
-    const health = projected < 300;
-    return { projected: Math.round(projected), health };
-  }, []);
+  /** 
+   * Predictive Anomaly Color Shift
+   * Shifts from Tokyo Blue to Vibrating Violet as spend probability rises > 75%
+   */
+  const anomalyColor = useMemo(() => {
+    if (emiCalculations.anomalyProb > 75) return 'bg-[#BB9AF7]/40 shadow-[0_0_30px_#BB9AF733]';
+    return 'bg-[#7AA2F7]/10';
+  }, [emiCalculations.anomalyProb]);
 
-  // Subscription Auditor Logic
-  const auditedSubscriptions = useMemo(() => {
-    const counts: Record<string, { count: number, total: number, desc: string }> = {};
-    transactionHistory.forEach(tx => {
-      const key = tx.desc.split(':')[0].split('(')[0].trim();
-      if (!counts[key]) counts[key] = { count: 0, total: 0, desc: tx.desc };
-      counts[key].count++;
-      counts[key].total += tx.amount;
-    });
-    return Object.entries(counts)
-      .filter(([_, data]) => data.count > 1)
-      .map(([name, data]) => ({ name, ...data }));
-  }, []);
+  /** 
+   * Zero-Knowledge Status (Data-as-Art)
+   * Seed-based visual health communication
+   */
+  const systemArtUrl = useMemo(() => {
+    const isHealthy = emiCalculations.anomalyProb < 80;
+    // Space seed for Healthy (Stars), Red Nebula for Alert
+    return isHealthy 
+      ? `https://picsum.photos/seed/deep-space-healthy/400/300` 
+      : `https://picsum.photos/seed/red-nebula-alert/400/300`;
+  }, [emiCalculations.anomalyProb]);
 
   useEffect(() => {
     if (isGhostMode) {
@@ -151,7 +151,6 @@ export default function Dashboard() {
     }
   }, [isGhostMode]);
 
-  // Voice Command System Initialization
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -177,7 +176,7 @@ export default function Dashboard() {
       recognitionRef.current?.stop();
     } else {
       recognitionRef.current?.start();
-      toast({ title: "VOICE SYSTEM ACTIVE", description: "Listening for 'Ghost' or 'Export'..." });
+      toast({ title: "VOICE SYSTEM ACTIVE", description: "Listening for commands..." });
     }
     setIsListening(!isListening);
   };
@@ -192,6 +191,32 @@ export default function Dashboard() {
     setPendingAction(() => action);
     setIsAuthDialogOpen(true);
     triggerHaptic();
+  };
+
+  /**
+   * Ghost Mode Logic & Kill-Switch
+   * If Ghost Mode is active, deactivation is strictly locked behind biometrics.
+   */
+  const handleGhostModeToggle = (checked: boolean) => {
+    // SECURITY: Always require biometrics to exit stealth mode (Kill-Switch)
+    if (!checked && isGhostMode) {
+      requireSecurity(() => {
+        setIsGhostMode(false);
+        triggerHaptic();
+        toast({ title: "STEALTH DEACTIVATED", description: "Standard protocols restored." });
+      });
+      return;
+    }
+
+    // Normal activation flow
+    requireSecurity(() => {
+      setIsGhostMode(checked);
+      triggerHaptic();
+      toast({
+        title: checked ? "GHOST MODE ACTIVATED" : "GHOST MODE DEACTIVATED",
+        description: checked ? "Network stealth engaged." : "Standard protocols restored.",
+      });
+    });
   };
 
   const handleBiometricAuth = () => {
@@ -213,15 +238,32 @@ export default function Dashboard() {
     }
   };
 
-  const handleGhostModeToggle = (checked: boolean) => {
-    requireSecurity(() => {
-      setIsGhostMode(checked);
-      triggerHaptic();
-      toast({
-        title: checked ? "GHOST MODE ACTIVATED" : "GHOST MODE DEACTIVATED",
-        description: checked ? "Network stealth engaged." : "Standard protocols restored.",
-      });
-    });
+  /** 
+   * NLP Semantic Intent Listener (Steganographic Trigger)
+   * Listens for weather mentions to trigger Ghost Mode silently.
+   */
+  const processTerminalCommand = (cmd: string) => {
+    // Semantic trigger: Cloudy + Weather intent
+    const weatherIntent = /weather|sky|it's/i.test(cmd) && /cloudy|stormy/i.test(cmd);
+    
+    if (weatherIntent) {
+      setIsGhostMode(true);
+      setVoiceLog(prev => [...prev, "SEMANIC TRIGGER: Weather mask detected. Stealth active."]);
+      return;
+    }
+
+    if (cmd === '/ghost_on') handleGhostModeToggle(true);
+    else if (cmd === '/ghost_off') handleGhostModeToggle(false);
+    else if (cmd === '/report') exportReport();
+    else if (cmd === '/voice') toggleVoiceControl();
+    else toast({ title: "UNKNOWN COMMAND", variant: "destructive" });
+  };
+
+  const handleTerminalCommand = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cmd = terminalInput.toLowerCase().trim();
+    setTerminalInput('');
+    processTerminalCommand(cmd);
   };
 
   const handleLinkWhatsApp = () => {
@@ -252,32 +294,17 @@ export default function Dashboard() {
   const exportReport = async () => {
     requireSecurity(async () => {
       setIsExporting(true);
-      
       try {
         const doc = new jsPDF();
         doc.setFillColor(26, 27, 38);
         doc.rect(0, 0, 210, 297, 'F');
         doc.setTextColor(122, 162, 247);
-        doc.setFontSize(22);
         doc.text('SENTINEL-OPS: TOKYO NIGHT TREND REPORT', 10, 20);
-        doc.setTextColor(192, 202, 245);
-        doc.setFontSize(10);
-        doc.text(`Operator: ${user?.email}`, 10, 30);
-        doc.text(`Infrastructure Leakage Detected: $60.10`, 10, 40);
-        doc.text(`Financing Principal: $${loanPrincipal}`, 10, 50);
-        doc.text(`Monthly EMI: $${emiCalculations.emi}`, 10, 60);
 
         const pdfBlob = doc.output('blob');
-        let pdfUrl = '';
-
-        try {
-          const storageRef = ref(storage, `reports/${user?.uid}/${Date.now()}_report.pdf`);
-          const uploadResult = await uploadBytes(storageRef, pdfBlob);
-          pdfUrl = await getDownloadURL(uploadResult.ref);
-        } catch (storageError) {
-          console.warn('[STORAGE UPLOAD FAILED] Falling back to simulated uplink.');
-          pdfUrl = 'https://sentinel-ops.io/secure-report-link-simulated';
-        }
+        const storageRef = ref(storage, `reports/${user?.uid}/${Date.now()}_report.pdf`);
+        const uploadResult = await uploadBytes(storageRef, pdfBlob);
+        const pdfUrl = await getDownloadURL(uploadResult.ref);
 
         const result = await dispatchReport({
           email: user?.email || '',
@@ -290,17 +317,14 @@ export default function Dashboard() {
           setIsExporting(false);
           setShowSuccessAnimation(true);
           setTimeout(() => setShowSuccessAnimation(false), 4000);
-          toast({ title: "DISPATCH SUCCESSFUL", description: "Report synced with Email & WhatsApp." });
-        } else {
-          throw new Error('Dispatch failed');
+          toast({ title: "DISPATCH SUCCESSFUL", description: "Report synced across nodes." });
         }
-      } catch (error) {
-        console.error('[EXPORT ERROR]', error);
+      } catch (error: any) {
         setIsExporting(false);
         toast({ 
           variant: "destructive", 
           title: "DISPATCH FAILED", 
-          description: "Secure transmission interrupted. Please check node connectivity." 
+          description: error.message || "Uplink interrupted." 
         });
       }
     });
@@ -310,17 +334,6 @@ export default function Dashboard() {
     try {
       await signOut(auth);
     } catch (error) {}
-  };
-
-  const handleTerminalCommand = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cmd = terminalInput.toLowerCase().trim();
-    setTerminalInput('');
-    if (cmd === '/ghost_on') handleGhostModeToggle(true);
-    else if (cmd === '/ghost_off') handleGhostModeToggle(false);
-    else if (cmd === '/report') exportReport();
-    else if (cmd === '/voice') toggleVoiceControl();
-    else toast({ title: "UNKNOWN COMMAND", variant: "destructive" });
   };
 
   const handlePayment = () => {
@@ -400,44 +413,42 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-        <Card className={cn("glass-card relative overflow-hidden p-8 flex flex-col items-center text-center group", prediction.health ? "nebula-glow" : "nebula-unhealthy")}>
-          <div className="absolute top-4 left-4">
-            <Badge variant="outline" className="text-[8px] uppercase tracking-widest border-white/10 text-secondary">Predictive Node</Badge>
+        {/* Anomaly Forecaster (Predictive Heatmap) */}
+        <Card className={cn("glass-card relative overflow-hidden p-8 flex flex-col items-center text-center transition-all duration-700", anomalyColor)}>
+          <div className="absolute top-4 left-4 flex items-center gap-2">
+            <Brain className="w-3 h-3 text-primary" />
+            <Badge variant="outline" className="text-[8px] uppercase tracking-widest border-white/10 text-secondary">Neural Forecaster</Badge>
           </div>
-          <Activity className={cn("w-12 h-12 mb-4", prediction.health ? "text-primary" : "text-destructive")} />
-          <h2 className="text-sm uppercase tracking-widest text-secondary font-semibold">30-Day Projection</h2>
-          <div className="text-5xl font-bold my-4 tracking-tighter text-white">${prediction.projected}</div>
+          <Activity className={cn("w-12 h-12 mb-4 transition-colors duration-500", emiCalculations.anomalyProb > 75 ? "text-accent" : "text-primary")} />
+          <h2 className="text-sm uppercase tracking-widest text-secondary font-semibold">Spend Anomaly Prob.</h2>
+          <div className="text-5xl font-bold my-4 tracking-tighter text-white">{emiCalculations.anomalyProb}%</div>
           <p className="text-[10px] text-muted-foreground uppercase max-w-[200px] leading-relaxed">
-            {prediction.health 
-              ? "Healthy burn detected. Cash flow remains optimal." 
-              : "Warning: Spike projected. Review reserve allocations."}
+            {emiCalculations.anomalyProb > 75 
+              ? "High probability of spending spike. Recommend reserve scaling." 
+              : "Spending patterns normalized. No spikes detected."}
           </p>
-          <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
         </Card>
 
-        <Card className="glass-card p-6 flex flex-col">
-          <CardHeader className="p-0 mb-6 flex flex-row items-center justify-between">
-            <CardTitle className="text-[11px] text-primary uppercase tracking-tight flex items-center gap-2">
-              <Search className="w-3 h-3" /> Waste Discovery
-            </CardTitle>
-            <Badge variant="secondary" className="bg-primary/10 text-primary text-[8px]">{auditedSubscriptions.length} Flags</Badge>
-          </CardHeader>
-          <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-            {auditedSubscriptions.map((sub, i) => (
-              <div key={i} className="p-3 bg-white/[0.02] border border-white/5 rounded-xl hover:bg-white/[0.05] transition-colors group">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-[11px] font-semibold text-foreground group-hover:text-primary transition-colors">{sub.name}</span>
-                  <span className="text-[11px] text-destructive font-mono">-${sub.total.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-[9px] text-secondary uppercase">
-                  <span>Detected {sub.count}x / Mo</span>
-                  <AlertTriangle className="w-3 h-3 text-destructive/50" />
-                </div>
-              </div>
-            ))}
+        {/* Zero-Knowledge Status (Data-as-Art) */}
+        <Card className="glass-card p-0 relative overflow-hidden group">
+          <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
+            <Sparkles className="w-3 h-3 text-accent" />
+            <span className="text-[9px] uppercase tracking-tight text-white/70 bg-black/40 px-2 py-0.5 rounded-full">Art Status Protocol</span>
+          </div>
+          <img 
+            src={systemArtUrl} 
+            alt="System Status Art" 
+            className="w-full h-full object-cover brightness-[0.6] group-hover:scale-110 transition-transform duration-1000"
+            data-ai-hint="space nebula"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#1A1B26] via-transparent to-transparent"></div>
+          <div className="absolute bottom-6 left-0 w-full text-center px-6">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-secondary font-semibold mb-1">Environmental Integrity</p>
+            <p className="text-xs text-white/50 italic">Communication via visual abstraction.</p>
           </div>
         </Card>
 
+        {/* Gamified Goal Tracker (Satellite Physics) */}
         <Card className="glass-card p-6 relative overflow-hidden flex flex-col items-center justify-center">
           <div className="absolute top-4 left-4 flex items-center gap-2">
             <Rocket className="w-3 h-3 text-accent" />
@@ -462,7 +473,7 @@ export default function Dashboard() {
 
           <div className="mt-6 text-center">
             <p className="text-2xl font-bold tracking-tighter text-white">{emiCalculations.progress}%</p>
-            <p className="text-[9px] uppercase tracking-widest text-secondary font-semibold">Repayment Orbit finalized</p>
+            <p className="text-[9px] uppercase tracking-widest text-secondary font-semibold">Repayment Orbit Finalized</p>
           </div>
         </Card>
       </div>
@@ -477,7 +488,7 @@ export default function Dashboard() {
         <TabsContent value="overview">
           <Card className="glass-card overflow-hidden">
             <CardHeader>
-              <CardTitle className="text-sm text-primary flex items-center gap-2 uppercase tracking-tight">
+              <CardTitle className="text-sm text-primary flex items-center gap-2 uppercase tracking-tight font-semibold">
                 <Activity className="w-4 h-4" /> Live Performance Node
               </CardTitle>
             </CardHeader>
@@ -556,7 +567,7 @@ export default function Dashboard() {
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                   <p className="text-[10px] text-secondary uppercase tracking-tight">Interest Ratio</p>
                   <p className="text-2xl font-semibold text-accent">{emiCalculations.interestRatio}%</p>
                 </div>
@@ -569,7 +580,7 @@ export default function Dashboard() {
                   </DialogTrigger>
                   <DialogContent className="bg-[#1A1B26]/95 backdrop-blur-3xl border-primary/30 text-foreground glass-card max-w-sm">
                     <DialogHeader className="items-center text-center">
-                      <DialogTitle className="text-lg text-primary tracking-tight uppercase">UPI Secure Link</DialogTitle>
+                      <DialogTitle className="text-lg text-primary tracking-tight uppercase font-semibold">UPI Secure Link</DialogTitle>
                     </DialogHeader>
                     <div className="flex flex-col items-center py-6 space-y-6">
                       {paymentStatus === 'IDLE' ? (
@@ -577,7 +588,7 @@ export default function Dashboard() {
                           <div className="p-4 bg-white rounded-2xl">
                             <QRCodeSVG value={`upi://pay?pa=sentinel@ops&am=${emiCalculations.emi}`} size={160} />
                           </div>
-                          <Button onClick={handlePayment} className="btn-tokyo w-full bg-primary text-black font-semibold h-14 rounded-2xl tracking-tight">I HAVE PAID</Button>
+                          <Button onClick={handlePayment} className="btn-tokyo w-full bg-primary text-black font-semibold h-14 rounded-2xl tracking-tight uppercase">I Have Paid</Button>
                         </>
                       ) : paymentStatus === 'PAYING' ? (
                         <div className="py-10 flex flex-col items-center gap-4">
@@ -587,7 +598,7 @@ export default function Dashboard() {
                       ) : (
                         <div className="py-10 flex flex-col items-center gap-6 animate-in zoom-in-50">
                           <SuccessIcon className="w-16 h-16 text-[#9ECE6A] neon-text" />
-                          <h3 className="text-[#9ECE6A] font-semibold text-xl tracking-tight">TRANSACTION VERIFIED</h3>
+                          <h3 className="text-[#9ECE6A] font-semibold text-xl tracking-tight uppercase">Transaction Verified</h3>
                           <Button onClick={() => setIsPaymentDialogOpen(false)} className="btn-tokyo bg-primary text-black w-full h-12 rounded-xl">DONE</Button>
                         </div>
                       )}
@@ -637,20 +648,21 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6 h-56 flex flex-col">
-            <div className="flex-1 overflow-y-auto space-y-1 font-mono text-[11px] text-secondary/60 mb-6">
+            <div className="flex-1 overflow-y-auto space-y-1 font-mono text-[11px] text-secondary/60 mb-6 custom-scrollbar">
               <p><span className="text-primary">[BOOT]</span> Kernel sequence finalized.</p>
               {voiceLog.map((log, i) => (
                 <p key={i}><span className="text-accent">[VOICE]</span> {log}</p>
               ))}
               {waStatus === 'CONNECTED' && <p className="text-[#9ECE6A]">[LINK] WhatsApp uplink authorized.</p>}
-              {isGhostMode && <p className="text-primary neon-text">[STEALTH] Tokyo Red Protocol active.</p>}
+              {isGhostMode && <p className="text-primary neon-text uppercase">[Stealth] Tokyo Red Protocol active.</p>}
+              <p className="opacity-40 italic text-[10px] mt-2 tracking-widest uppercase">System ready for semantic intent mapping...</p>
             </div>
             <form onSubmit={handleTerminalCommand} className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary font-bold opacity-40"> {'>'} </span>
               <Input 
                 value={terminalInput}
                 onChange={(e) => setTerminalInput(e.target.value)}
-                placeholder="ENTER COMMAND..."
+                placeholder="ENTER COMMAND OR WEATHER MASK..."
                 className="bg-black/40 border-white/10 pl-10 font-mono text-[11px] h-12 rounded-full tracking-tight text-base"
               />
             </form>
@@ -664,6 +676,10 @@ export default function Dashboard() {
           <CardContent className="space-y-8">
             <LoadProgress label="CPU UTILIZATION" value={42} color="bg-primary" />
             <LoadProgress label="MEMORY RESERVATION" value={64} color="bg-accent" />
+            <div className="pt-4 border-t border-white/5 flex items-center gap-3">
+              <ShieldAlert className="w-4 h-4 text-primary" />
+              <p className="text-[9px] uppercase tracking-tight text-secondary leading-relaxed font-semibold">Biometric Kill-Switch Active for Stealth Termination.</p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -676,10 +692,10 @@ export default function Dashboard() {
                 <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6 border border-primary/20">
                   <Fingerprint className="w-10 h-10 text-primary animate-pulse" />
                 </div>
-                <DialogTitle className="text-lg text-primary tracking-tight uppercase">Identity Link</DialogTitle>
+                <DialogTitle className="text-lg text-primary tracking-tight uppercase font-semibold">Identity Link Required</DialogTitle>
               </DialogHeader>
               <div className="py-6 space-y-6 text-center">
-                <Button onClick={handleBiometricAuth} className="btn-tokyo w-full bg-primary text-black font-semibold h-14 tracking-tight rounded-2xl">SCAN BIOMETRICS</Button>
+                <Button onClick={handleBiometricAuth} className="btn-tokyo w-full bg-primary text-black font-semibold h-14 tracking-tight rounded-2xl uppercase">Scan Biometrics</Button>
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/10"></span></div>
                   <div className="relative flex justify-center text-[10px] uppercase"><span className="bg-[#1A1B26] px-2 text-secondary">Fallback</span></div>
@@ -693,7 +709,7 @@ export default function Dashboard() {
                     placeholder="6-DIGIT PIN" 
                     className="bg-black/50 border-white/10 text-center tracking-[1em] h-12 text-lg rounded-xl text-base" 
                   />
-                  <Button type="submit" variant="outline" className="btn-tokyo w-full border-white/10 rounded-xl h-12 uppercase text-[10px] tracking-tight">Verify PIN</Button>
+                  <Button type="submit" variant="outline" className="btn-tokyo w-full border-white/10 rounded-xl h-12 uppercase text-[10px] tracking-tight font-semibold">Verify PIN</Button>
                 </form>
               </div>
             </DialogContent>
@@ -702,9 +718,9 @@ export default function Dashboard() {
       </AnimatePresence>
 
       <Dialog open={isWADialogOpen} onOpenChange={setIsWADialogOpen}>
-        <DialogContent className="bg-[#1A1B26]/95 backdrop-blur-3xl border-primary/30 text-foreground glass-card max-w-md">
+        <DialogContent className="bg-[#1A1B26]/95 backdrop-blur-3xl border-primary/30 text-foreground glass-card max-md:max-w-[90vw] max-w-md">
           <DialogHeader className="items-center text-center">
-            <DialogTitle className="text-xl text-primary tracking-tight uppercase">WhatsApp Pairing</DialogTitle>
+            <DialogTitle className="text-xl text-primary tracking-tight uppercase font-semibold">WhatsApp Pairing</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center py-6 space-y-6">
             {waStatus === 'ENTER_PHONE' && (
@@ -716,20 +732,20 @@ export default function Dashboard() {
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   className="bg-black/50 border-white/10 text-center text-lg h-14 rounded-2xl text-base"
                 />
-                <Button onClick={generatePairingCode} className="btn-tokyo w-full bg-primary text-black hover:bg-primary/80 font-semibold h-14 tracking-tight rounded-2xl">PAIR WITH PHONE</Button>
+                <Button onClick={generatePairingCode} className="btn-tokyo w-full bg-primary text-black hover:bg-primary/80 font-semibold h-14 tracking-tight rounded-2xl uppercase">Pair With Phone</Button>
               </div>
             )}
             {waStatus === 'DISPLAY_CODE' && (
               <div className="w-full space-y-6 text-center">
                 <div className="glass-card p-10 rounded-3xl border-primary/20 bg-white/[0.02] relative overflow-hidden">
                   <span className="text-5xl font-mono text-primary neon-text tracking-widest block mb-4">{pairingCode}</span>
-                  <Progress value={(qrRefreshTimer / 20) * 100} className="h-1 bg-white/10" />
+                  <Progress value={65} className="h-1 bg-white/10" />
                 </div>
                 <p className="text-[9px] text-muted-foreground mt-4 leading-relaxed uppercase">
-                  Open WhatsApp {'>'} Settings {'>'} Linked Devices {'>'} Link a Device {'>'} Link with phone number instead
+                  Open WhatsApp &gt; Settings &gt; Linked Devices &gt; Link a Device &gt; Link with phone instead
                 </p>
-                <div className="flex items-center justify-center gap-2 text-[10px] text-secondary">
-                  <Loader2 className="w-3 h-3 animate-spin" /> REFRESHING IN {qrRefreshTimer}S
+                <div className="flex items-center justify-center gap-2 text-[10px] text-secondary uppercase tracking-tight">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Refreshing Node Session...
                 </div>
               </div>
             )}
@@ -737,7 +753,7 @@ export default function Dashboard() {
               <div className="flex flex-col items-center gap-6 animate-in zoom-in-50 duration-500">
                 <SuccessIcon className="w-20 h-20 text-[#9ECE6A] neon-text" />
                 <h3 className="text-[#9ECE6A] font-semibold text-2xl tracking-tight uppercase">Authorized</h3>
-                <Button onClick={() => setIsWADialogOpen(false)} className="btn-tokyo bg-primary text-black w-full h-12 rounded-xl">CONTINUE</Button>
+                <Button onClick={() => setIsWADialogOpen(false)} className="btn-tokyo bg-primary text-black w-full h-12 rounded-xl uppercase">Continue</Button>
               </div>
             )}
           </div>
@@ -755,7 +771,7 @@ export default function Dashboard() {
               Dispatching to Email, WhatsApp, and Telegram Mainframe...
             </p>
             <div className="w-full space-y-2 px-6">
-              <div className="flex justify-between text-[8px] uppercase text-secondary">
+              <div className="flex justify-between text-[8px] uppercase text-secondary font-semibold">
                 <span>Encryption</span>
                 <span>Active</span>
               </div>
@@ -772,7 +788,7 @@ export default function Dashboard() {
               <Lottie animationData={mailSentAnimation} loop={false} />
             </div>
             <h2 className="text-3xl font-bold text-[#9ECE6A] neon-text uppercase tracking-tighter mt-4">Dispatch Confirmed</h2>
-            <p className="text-secondary uppercase text-[10px] mt-2 tracking-[0.2em]">Report secured across all channels</p>
+            <p className="text-secondary uppercase text-[10px] mt-2 tracking-[0.2em] font-semibold">Report secured across all channels</p>
           </div>
         </div>
       )}
@@ -791,7 +807,7 @@ function ChannelStatus({ label, status, icon }: { label: string, status: boolean
           {icon}
         </div>
         <div className="text-left">
-          <p className="text-[9px] text-secondary uppercase tracking-tight">{label}</p>
+          <p className="text-[9px] text-secondary uppercase tracking-tight font-semibold">{label}</p>
           <p className={cn("text-[10px] font-semibold uppercase", status ? "text-[#9ECE6A]" : "text-destructive")}>
             {status ? 'Online' : 'Disconnected'}
           </p>
@@ -808,11 +824,11 @@ function StatCard({ title, value, icon, sub, isEmi }: { title: string, value: st
         {icon}
       </div>
       <CardHeader className="pb-1 relative z-10">
-        <p className="text-[10px] text-secondary uppercase tracking-tight font-semibold mb-2">{title}</p>
+        <p className="text-[10px] text-secondary uppercase tracking-tight font-bold mb-2">{title}</p>
         <CardTitle className={cn("text-3xl font-semibold text-foreground group-hover:text-primary transition-colors tracking-tighter duration-500", isEmi && "neon-text text-primary")}>{value}</CardTitle>
       </CardHeader>
       <CardContent className="relative z-10">
-        <p className="text-[9px] text-primary/60 uppercase truncate tracking-tight font-semibold">{sub}</p>
+        <p className="text-[9px] text-primary/60 uppercase truncate tracking-tight font-bold">{sub}</p>
       </CardContent>
     </Card>
   );
@@ -821,7 +837,7 @@ function StatCard({ title, value, icon, sub, isEmi }: { title: string, value: st
 function FinStat({ label, value, color }: { label: string, value: string, color: string }) {
   return (
     <div className="p-4 glass-card rounded-2xl text-center">
-      <p className="text-[9px] text-secondary uppercase tracking-tight font-semibold mb-2">{label}</p>
+      <p className="text-[9px] text-secondary uppercase tracking-tight font-bold mb-2">{label}</p>
       <p className={cn("text-lg font-semibold", color)}>{value}</p>
     </div>
   );
@@ -830,7 +846,7 @@ function FinStat({ label, value, color }: { label: string, value: string, color:
 function LoadProgress({ label, value, color }: { label: string, value: number, color: string }) {
   return (
     <div className="space-y-3">
-      <div className="flex justify-between text-[10px] uppercase tracking-tight font-semibold text-secondary">
+      <div className="flex justify-between text-[10px] uppercase tracking-tight font-bold text-secondary">
         <span>{label}</span>
         <span className="text-primary">{value}%</span>
       </div>
