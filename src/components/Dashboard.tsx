@@ -11,7 +11,7 @@ import {
   Fingerprint, Download, MessageSquare,
   CheckCircle2 as SuccessIcon, IndianRupee, CreditCard,
   Terminal, Loader2, Send, Mail, Mic, MicOff, Search, Rocket, AlertTriangle,
-  ShieldAlert, Sparkles, Brain, FileText
+  ShieldAlert, Sparkles, Brain, FileText, Lock, ShieldCheck
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -30,11 +30,11 @@ import { signOut } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { cn } from '@/lib/utils';
 import { jsPDF } from 'jspdf';
-import { QRCodeSVG } from 'qrcode.react';
 import { dispatchReport } from '@/app/actions/report-actions';
 import Lottie from 'lottie-react';
 import Logo from './Logo';
 import { motion, AnimatePresence } from 'framer-motion';
+import UpiPaymentUplink from './UpiPaymentUplink';
 
 const mailSentAnimation = {
   v: "5.5.7",
@@ -311,6 +311,8 @@ export default function Dashboard() {
       doc.setTextColor(192, 202, 245);
       doc.setFontSize(12);
       doc.text(`Transaction ID: ${transactionId}`, 10, 60);
+      doc.text(`Amount Paid: INR 5,00,000`, 10, 70);
+      doc.text(`Date: ${new Date().toLocaleDateString()}`, 10, 80);
       doc.save(`Receipt_${transactionId}.pdf`);
 
       let pdfUrl = 'https://sentinel-ops.io/simulated-receipt';
@@ -384,17 +386,6 @@ export default function Dashboard() {
     try {
       await signOut(auth);
     } catch (error) {}
-  };
-
-  const handlePayment = () => {
-    requireSecurity(() => {
-      setPaymentStatus('PAYING');
-      setTimeout(() => {
-        setPaymentStatus('SUCCESS');
-        toast({ title: "PAYMENT SUCCESSFUL" });
-        generateAndExportReceipt();
-      }, 2000);
-    });
   };
 
   return (
@@ -560,19 +551,25 @@ export default function Dashboard() {
 
         <TabsContent value="fintech">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card className="glass-card p-8">
-              <FinStat label="Monthly EMI" value={`$${emiCalculations.emi}`} color="text-primary neon-text" />
-              <div className="mt-10 space-y-6">
-                <Slider value={[loanPrincipal]} min={5000} max={200000} step={5000} onValueChange={(v) => setLoanPrincipal(v[0])} />
-                <Button onClick={handlePayment} className="btn-physics w-full bg-primary text-black font-semibold h-14 rounded-2xl uppercase">PAY EMI <CreditCard className="w-4 h-4 ml-2" /></Button>
-              </div>
-            </Card>
-            <Card className="glass-card p-8">
-               <div className="flex flex-col items-center justify-center h-full">
-                  <Badge className="bg-[#BB9AF7]/20 text-[#BB9AF7] mb-4">FinOps Node Ready</Badge>
-                  <p className="text-secondary text-center text-xs uppercase leading-relaxed font-semibold">Secure infrastructure financing active. Repayment optimized via token-gated UPI uplink.</p>
-               </div>
-            </Card>
+            <div className="space-y-8">
+              <Card className="glass-card p-8">
+                <FinStat label="Estimated Repayment" value={`INR 5,00,000`} color="text-primary neon-text" />
+                <div className="mt-10 space-y-6">
+                  <Label className="text-[10px] uppercase text-secondary">Adjust principal</Label>
+                  <Slider value={[loanPrincipal]} min={5000} max={200000} step={5000} onValueChange={(v) => setLoanPrincipal(v[0])} />
+                </div>
+              </Card>
+              <Card className="glass-card p-8 flex flex-col items-center justify-center text-center">
+                <Badge className="bg-[#BB9AF7]/20 text-[#BB9AF7] mb-4 uppercase tracking-[0.2em] font-bold">FinOps Node Ready</Badge>
+                <p className="text-secondary text-[10px] uppercase leading-relaxed font-semibold">Secure infrastructure financing active. Repayment optimized via token-gated UPI uplink.</p>
+              </Card>
+            </div>
+            
+            <UpiPaymentUplink 
+              amount={500000} 
+              requireSecurity={requireSecurity}
+              onSuccess={generateAndExportReceipt}
+            />
           </div>
         </TabsContent>
 
