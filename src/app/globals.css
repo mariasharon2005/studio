@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -76,6 +77,14 @@
   background-image: linear-gradient(rgba(122, 162, 247, 0.05) 1px, transparent 1px),
                     linear-gradient(90deg, rgba(122, 162, 247, 0.05) 1px, transparent 1px);
   background-size: 40px 40px;
+}
+
+.nebula-glow {
+  background: radial-gradient(circle at center, hsla(var(--primary), 0.15) 0%, transparent 70%);
+}
+
+.nebula-unhealthy {
+  background: radial-gradient(circle at center, hsla(var(--destructive), 0.15) 0%, transparent 70%);
 }
 
 @keyframes subtle-zoom {

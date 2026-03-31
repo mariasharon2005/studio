@@ -1,6 +1,7 @@
+
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell 
@@ -10,7 +11,7 @@ import {
   Zap, Activity, EyeOff,
   Fingerprint, Download, MessageSquare,
   CheckCircle2 as SuccessIcon, IndianRupee, CreditCard,
-  Terminal, Loader2, Send, Mail
+  Terminal, Loader2, Send, Mail, Mic, MicOff, Search, Rocket, AlertTriangle
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { dispatchReport } from '@/app/actions/report-actions';
 import Lottie from 'lottie-react';
 import Logo from './Logo';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const mailSentAnimation = {
   v: "5.5.7",
@@ -57,6 +59,17 @@ const forecastData = [
   { name: 'Apr', cost: 278, carbon: 390, cpu: 0.48 },
   { name: 'May', cost: 189, carbon: 480, cpu: 0.41 },
   { name: 'Jun', cost: 239, carbon: 380, cpu: 0.35 },
+];
+
+const transactionHistory = [
+  { id: 1, date: '2026-03-25', desc: 'AWS Monthly Billing (EC2)', amount: 120.50 },
+  { id: 2, date: '2026-03-24', desc: 'Azure VM Reserved Instance', amount: 85.00 },
+  { id: 3, date: '2026-03-22', desc: 'SaaS Subscription: Figma Pro', amount: 15.00 },
+  { id: 4, date: '2026-03-21', desc: 'AWS Monthly Billing (S3)', amount: 45.20 },
+  { id: 5, date: '2026-03-18', desc: 'SaaS Subscription: Slack Enterprise', amount: 200.00 },
+  { id: 6, date: '2026-03-15', desc: 'GCP Firestore Egress', amount: 12.00 },
+  { id: 7, date: '2026-02-25', desc: 'AWS Monthly Billing (EC2)', amount: 118.00 },
+  { id: 8, date: '2026-02-21', desc: 'AWS Monthly Billing (S3)', amount: 44.00 },
 ];
 
 export default function Dashboard() {
@@ -84,6 +97,11 @@ export default function Dashboard() {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'IDLE' | 'PAYING' | 'SUCCESS'>('IDLE');
 
+  // Intelligence Layer State
+  const [isListening, setIsListening] = useState(false);
+  const [voiceLog, setVoiceLog] = useState<string[]>([]);
+  const recognitionRef = useRef<any>(null);
+
   const annualRate = 0.12;
   const monthlyRate = annualRate / 12;
 
@@ -98,9 +116,33 @@ export default function Dashboard() {
       emi: Math.round(emi),
       totalPayable: Math.round(totalPayable),
       totalInterest: Math.round(totalInterest),
-      interestRatio: Math.round((totalInterest / totalPayable) * 100)
+      interestRatio: Math.round((totalInterest / totalPayable) * 100),
+      progress: Math.min(Math.round(((50000 - 35000) / 50000) * 100), 100) // Mock progress
     };
   }, [loanPrincipal, loanTenure, monthlyRate]);
+
+  // Predictive Cash Flow Logic
+  const prediction = useMemo(() => {
+    const avgCost = forecastData.reduce((acc, curr) => acc + curr.cost, 0) / forecastData.length;
+    const trend = (forecastData[forecastData.length - 1].cost - forecastData[0].cost) / forecastData.length;
+    const projected = avgCost + (trend * 1.5);
+    const health = projected < 300;
+    return { projected: Math.round(projected), health };
+  }, []);
+
+  // Subscription Auditor Logic
+  const auditedSubscriptions = useMemo(() => {
+    const counts: Record<string, { count: number, total: number, desc: string }> = {};
+    transactionHistory.forEach(tx => {
+      const key = tx.desc.split(':')[0].split('(')[0].trim();
+      if (!counts[key]) counts[key] = { count: 0, total: 0, desc: tx.desc };
+      counts[key].count++;
+      counts[key].total += tx.amount;
+    });
+    return Object.entries(counts)
+      .filter(([_, data]) => data.count > 1)
+      .map(([name, data]) => ({ name, ...data }));
+  }, []);
 
   useEffect(() => {
     if (isGhostMode) {
@@ -110,37 +152,42 @@ export default function Dashboard() {
     }
   }, [isGhostMode]);
 
+  // Voice Command System Initialization
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (waStatus === 'DISPLAY_CODE') {
-      interval = setInterval(() => {
-        setQrRefreshTimer((prev) => {
-          if (prev <= 1) {
-            setPairingCode(generateRandomCode());
-            return 20;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+        setVoiceLog(prev => [...prev.slice(-4), `RECOGNIZED: "${transcript}"`]);
+        
+        if (transcript.includes('ghost')) {
+          handleGhostModeToggle(!isGhostMode);
+        } else if (transcript.includes('export') || transcript.includes('report')) {
+          exportReport();
+        }
+      };
     }
-    return () => clearInterval(interval);
-  }, [waStatus]);
+  }, [isGhostMode]);
+
+  const toggleVoiceControl = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+    } else {
+      recognitionRef.current?.start();
+      toast({ title: "VOICE SYSTEM ACTIVE", description: "Listening for 'Ghost' or 'Export'..." });
+    }
+    setIsListening(!isListening);
+  };
 
   const triggerHaptic = useCallback(() => {
     if (typeof window !== 'undefined' && window.navigator.vibrate) {
       window.navigator.vibrate(20);
     }
   }, []);
-
-  const generateRandomCode = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 8; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-      if (i === 3) code += '-';
-    }
-    return code;
-  };
 
   const requireSecurity = (action: () => void) => {
     setPendingAction(() => action);
@@ -188,7 +235,13 @@ export default function Dashboard() {
       toast({ title: "ERROR", description: "Invalid phone number.", variant: "destructive" });
       return;
     }
-    setPairingCode(generateRandomCode());
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+      if (i === 3) code += '-';
+    }
+    setPairingCode(code);
     setWaStatus('DISPLAY_CODE');
     
     setTimeout(() => {
@@ -253,6 +306,7 @@ export default function Dashboard() {
     if (cmd === '/ghost_on') handleGhostModeToggle(true);
     else if (cmd === '/ghost_off') handleGhostModeToggle(false);
     else if (cmd === '/report') exportReport();
+    else if (cmd === '/voice') toggleVoiceControl();
     else toast({ title: "UNKNOWN COMMAND", variant: "destructive" });
   };
 
@@ -288,6 +342,15 @@ export default function Dashboard() {
         </div>
         
         <div className="flex gap-4 items-center w-full md:w-auto justify-end">
+          <Button 
+            onClick={toggleVoiceControl}
+            variant="ghost" 
+            size="icon"
+            className={cn("h-10 w-10 rounded-full", isListening ? "text-primary animate-pulse" : "text-secondary")}
+          >
+            {isListening ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+          </Button>
+
           <div className="flex items-center gap-3 glass-card p-2 px-4 rounded-2xl">
             <Label htmlFor="ghost-mode" className="text-[10px] text-secondary uppercase">Ghost Mode</Label>
             <Switch 
@@ -321,6 +384,79 @@ export default function Dashboard() {
         <StatCard title="UNIT COST" value={`$0.30`} icon={<TrendingDown className="w-5 h-5 text-primary" />} sub="30-DAY EFFICIENCY TREND" />
         <StatCard title="GPU BURN" value={`$5.55/hr`} icon={<Zap className="w-5 h-5 text-accent" />} sub="SPOT INSTANCES ACTIVE" />
         <StatCard title="FINANCING EMI" value={`$${emiCalculations.emi}`} icon={<IndianRupee className="w-5 h-5 text-primary" />} sub="LOAN ACTIVE" isEmi />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+        <Card className={cn("glass-card relative overflow-hidden p-8 flex flex-col items-center text-center group", prediction.health ? "nebula-glow" : "nebula-unhealthy")}>
+          <div className="absolute top-4 left-4">
+            <Badge variant="outline" className="text-[8px] uppercase tracking-widest border-white/10 text-secondary">Predictive Node</Badge>
+          </div>
+          <Activity className={cn("w-12 h-12 mb-4", prediction.health ? "text-primary" : "text-destructive")} />
+          <h2 className="text-sm uppercase tracking-widest text-secondary font-semibold">30-Day Projection</h2>
+          <div className="text-5xl font-bold my-4 tracking-tighter text-white">${prediction.projected}</div>
+          <p className="text-[10px] text-muted-foreground uppercase max-w-[200px] leading-relaxed">
+            {prediction.health 
+              ? "Healthy burn detected. Cash flow remains optimal." 
+              : "Warning: Spike projected. Review reserve allocations."}
+          </p>
+          <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+        </Card>
+
+        <Card className="glass-card p-6 flex flex-col">
+          <CardHeader className="p-0 mb-6 flex flex-row items-center justify-between">
+            <CardTitle className="text-[11px] text-primary uppercase tracking-tight flex items-center gap-2">
+              <Search className="w-3 h-3" /> Waste Discovery
+            </CardTitle>
+            <Badge variant="secondary" className="bg-primary/10 text-primary text-[8px]">{auditedSubscriptions.length} Flags</Badge>
+          </CardHeader>
+          <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+            {auditedSubscriptions.map((sub, i) => (
+              <div key={i} className="p-3 bg-white/[0.02] border border-white/5 rounded-xl hover:bg-white/[0.05] transition-colors group">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[11px] font-semibold text-foreground group-hover:text-primary transition-colors">{sub.name}</span>
+                  <span className="text-[11px] text-destructive font-mono">-${sub.total.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-[9px] text-secondary uppercase">
+                  <span>Detected {sub.count}x / Mo</span>
+                  <AlertTriangle className="w-3 h-3 text-destructive/50" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="glass-card p-6 relative overflow-hidden flex flex-col items-center justify-center">
+          <div className="absolute top-4 left-4 flex items-center gap-2">
+            <Rocket className="w-3 h-3 text-accent" />
+            <span className="text-[10px] uppercase tracking-tight text-secondary">Mission to 2030</span>
+          </div>
+          
+          <div className="relative w-48 h-48 flex items-center justify-center">
+             {/* Orbital Path */}
+             <div className="absolute w-32 h-32 border border-white/5 rounded-full" />
+             
+             {/* Central Planet */}
+             <div className="w-16 h-16 bg-gradient-to-br from-primary via-accent to-purple-900 rounded-full shadow-[0_0_30px_hsla(var(--primary),0.3)] relative z-10 overflow-hidden">
+                <div className="absolute top-2 left-2 w-4 h-4 bg-white/20 rounded-full blur-sm" />
+             </div>
+
+             {/* Satellite Orbit */}
+             <motion.div 
+               animate={{ rotate: 360 }}
+               transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+               className="absolute w-40 h-40"
+             >
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 p-2 bg-white/10 rounded-lg backdrop-blur-md border border-white/10">
+                  <Activity className="w-3 h-3 text-primary" />
+                </div>
+             </motion.div>
+          </div>
+
+          <div className="mt-6 text-center">
+            <p className="text-2xl font-bold tracking-tighter text-white">{emiCalculations.progress}%</p>
+            <p className="text-[9px] uppercase tracking-widest text-secondary font-semibold">Repayment Orbit finalized</p>
+          </div>
+        </Card>
       </div>
 
       <Tabs defaultValue="overview" className="space-y-10">
@@ -495,7 +631,9 @@ export default function Dashboard() {
           <CardContent className="pt-6 h-56 flex flex-col">
             <div className="flex-1 overflow-y-auto space-y-1 font-mono text-[11px] text-secondary/60 mb-6">
               <p><span className="text-primary">[BOOT]</span> Kernel sequence finalized.</p>
-              <p><span className="text-primary">[INFO]</span> FinTech financing ratio: {emiCalculations.interestRatio}%.</p>
+              {voiceLog.map((log, i) => (
+                <p key={i}><span className="text-accent">[VOICE]</span> {log}</p>
+              ))}
               {waStatus === 'CONNECTED' && <p className="text-[#9ECE6A]">[LINK] WhatsApp uplink authorized.</p>}
               {isGhostMode && <p className="text-primary neon-text">[STEALTH] Tokyo Red Protocol active.</p>}
             </div>
@@ -522,34 +660,38 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
-        <DialogContent className="bg-[#1A1B26]/95 backdrop-blur-3xl border-primary/30 text-foreground glass-card max-w-sm">
-          <DialogHeader className="items-center text-center">
-            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6 border border-primary/20">
-              <Fingerprint className="w-10 h-10 text-primary animate-pulse" />
-            </div>
-            <DialogTitle className="text-lg text-primary tracking-tight uppercase">Identity Link</DialogTitle>
-          </DialogHeader>
-          <div className="py-6 space-y-6 text-center">
-            <Button onClick={handleBiometricAuth} className="btn-tokyo w-full bg-primary text-black font-semibold h-14 tracking-tight rounded-2xl">SCAN BIOMETRICS</Button>
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/10"></span></div>
-              <div className="relative flex justify-center text-[10px] uppercase"><span className="bg-[#1A1B26] px-2 text-secondary">Fallback</span></div>
-            </div>
-            <form onSubmit={handlePinAuth} className="space-y-3">
-              <Input 
-                type="password" 
-                maxLength={6} 
-                value={pinInput}
-                onChange={(e) => setPinInput(e.target.value)}
-                placeholder="6-DIGIT PIN" 
-                className="bg-black/50 border-white/10 text-center tracking-[1em] h-12 text-lg rounded-xl text-base" 
-              />
-              <Button type="submit" variant="outline" className="btn-tokyo w-full border-white/10 rounded-xl h-12 uppercase text-[10px] tracking-tight">Verify PIN</Button>
-            </form>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AnimatePresence>
+        {isAuthDialogOpen && (
+          <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
+            <DialogContent className="bg-[#1A1B26]/95 backdrop-blur-3xl border-primary/30 text-foreground glass-card max-w-sm">
+              <DialogHeader className="items-center text-center">
+                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6 border border-primary/20">
+                  <Fingerprint className="w-10 h-10 text-primary animate-pulse" />
+                </div>
+                <DialogTitle className="text-lg text-primary tracking-tight uppercase">Identity Link</DialogTitle>
+              </DialogHeader>
+              <div className="py-6 space-y-6 text-center">
+                <Button onClick={handleBiometricAuth} className="btn-tokyo w-full bg-primary text-black font-semibold h-14 tracking-tight rounded-2xl">SCAN BIOMETRICS</Button>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/10"></span></div>
+                  <div className="relative flex justify-center text-[10px] uppercase"><span className="bg-[#1A1B26] px-2 text-secondary">Fallback</span></div>
+                </div>
+                <form onSubmit={handlePinAuth} className="space-y-3">
+                  <Input 
+                    type="password" 
+                    maxLength={6} 
+                    value={pinInput}
+                    onChange={(e) => setPinInput(e.target.value)}
+                    placeholder="6-DIGIT PIN" 
+                    className="bg-black/50 border-white/10 text-center tracking-[1em] h-12 text-lg rounded-xl text-base" 
+                  />
+                  <Button type="submit" variant="outline" className="btn-tokyo w-full border-white/10 rounded-xl h-12 uppercase text-[10px] tracking-tight">Verify PIN</Button>
+                </form>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </AnimatePresence>
 
       <Dialog open={isWADialogOpen} onOpenChange={setIsWADialogOpen}>
         <DialogContent className="bg-[#1A1B26]/95 backdrop-blur-3xl border-primary/30 text-foreground glass-card max-w-md">
