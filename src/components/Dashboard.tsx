@@ -61,15 +61,6 @@ const forecastData = [
   { name: 'Jun', cost: 239, carbon: 380, cpu: 0.35 },
 ];
 
-const transactionHistory = [
-  { id: 1, date: '2026-03-25', desc: 'AWS Monthly Billing (EC2)', amount: 120.50 },
-  { id: 2, date: '2026-03-24', desc: 'Azure VM Reserved Instance', amount: 85.00 },
-  { id: 3, date: '2026-03-22', desc: 'SaaS Subscription: Figma Pro', amount: 15.00 },
-  { id: 4, date: '2026-03-21', desc: 'AWS Monthly Billing (S3)', amount: 45.20 },
-  { id: 5, date: '2026-03-18', desc: 'SaaS Subscription: Slack Enterprise', amount: 200.00 },
-  { id: 6, date: '2026-03-15', desc: 'GCP Firestore Egress', amount: 12.00 },
-];
-
 export default function Dashboard() {
   const { user } = useUser();
   const auth = useAuth();
@@ -98,10 +89,19 @@ export default function Dashboard() {
   const [voiceLog, setVoiceLog] = useState<string[]>([]);
   const recognitionRef = useRef<any>(null);
 
+  /**
+   * Identity Protection Logic
+   * Masks sensitive operator details when Ghost Mode is active.
+   */
+  const maskedOperator = useMemo(() => {
+    if (!user?.email) return 'OPERATOR_UNKNOWN';
+    if (!isGhostMode) return user.email;
+    const [local, domain] = user.email.split('@');
+    return `${local[0]}${'*'.repeat(local.length - 1)}@${domain}`;
+  }, [user, isGhostMode]);
+
   /** 
    * EMI Calculation Logic (Standard Reducing Balance Formula)
-   * Formula: [P x R x (1+R)^N] / [(1+R)^N - 1]
-   * where P = Principal, R = Monthly Rate, N = Tenure in Months
    */
   const emiCalculations = useMemo(() => {
     const annualRate = 0.12;
@@ -118,13 +118,12 @@ export default function Dashboard() {
       totalInterest: Math.round(totalInterest),
       interestRatio: Math.round((totalInterest / totalPayable) * 100),
       progress: Math.min(Math.round(((50000 - 35000) / 50000) * 100), 100),
-      anomalyProb: Math.round(Math.random() * 95) // Simulated predictive probability
+      anomalyProb: Math.round(Math.random() * 95)
     };
   }, [loanPrincipal, loanTenure]);
 
   /** 
    * Predictive Anomaly Color Shift
-   * Shifts from Tokyo Blue to Vibrating Violet as spend probability rises > 75%
    */
   const anomalyColor = useMemo(() => {
     if (emiCalculations.anomalyProb > 75) return 'bg-[#BB9AF7]/40 shadow-[0_0_30px_#BB9AF733]';
@@ -133,11 +132,9 @@ export default function Dashboard() {
 
   /** 
    * Zero-Knowledge Status (Data-as-Art)
-   * Seed-based visual health communication
    */
   const systemArtUrl = useMemo(() => {
     const isHealthy = emiCalculations.anomalyProb < 80;
-    // Space seed for Healthy (Stars), Red Nebula for Alert
     return isHealthy 
       ? `https://picsum.photos/seed/deep-space-healthy/400/300` 
       : `https://picsum.photos/seed/red-nebula-alert/400/300`;
@@ -193,12 +190,7 @@ export default function Dashboard() {
     triggerHaptic();
   };
 
-  /**
-   * Ghost Mode Logic & Kill-Switch
-   * If Ghost Mode is active, deactivation is strictly locked behind biometrics.
-   */
   const handleGhostModeToggle = (checked: boolean) => {
-    // SECURITY: Always require biometrics to exit stealth mode (Kill-Switch)
     if (!checked && isGhostMode) {
       requireSecurity(() => {
         setIsGhostMode(false);
@@ -208,7 +200,6 @@ export default function Dashboard() {
       return;
     }
 
-    // Normal activation flow
     requireSecurity(() => {
       setIsGhostMode(checked);
       triggerHaptic();
@@ -238,20 +229,13 @@ export default function Dashboard() {
     }
   };
 
-  /** 
-   * NLP Semantic Intent Listener (Steganographic Trigger)
-   * Listens for weather mentions to trigger Ghost Mode silently.
-   */
   const processTerminalCommand = (cmd: string) => {
-    // Semantic trigger: Cloudy + Weather intent
     const weatherIntent = /weather|sky|it's/i.test(cmd) && /cloudy|stormy/i.test(cmd);
-    
     if (weatherIntent) {
       setIsGhostMode(true);
       setVoiceLog(prev => [...prev, "SEMANIC TRIGGER: Weather mask detected. Stealth active."]);
       return;
     }
-
     if (cmd === '/ghost_on') handleGhostModeToggle(true);
     else if (cmd === '/ghost_off') handleGhostModeToggle(false);
     else if (cmd === '/report') exportReport();
@@ -284,7 +268,6 @@ export default function Dashboard() {
     }
     setPairingCode(code);
     setWaStatus('DISPLAY_CODE');
-    
     setTimeout(() => {
       setWaStatus('CONNECTED');
       toast({ title: "WHATSAPP CONNECTED", description: "Session encrypted." });
@@ -363,7 +346,7 @@ export default function Dashboard() {
                 </Badge>
               )}
             </div>
-            <p className="text-secondary text-[11px] uppercase mt-1">Operator: {user?.email}</p>
+            <p className="text-secondary text-[11px] uppercase mt-1">Operator: {maskedOperator}</p>
           </div>
         </div>
         
@@ -413,7 +396,6 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-        {/* Anomaly Forecaster (Predictive Heatmap) */}
         <Card className={cn("glass-card relative overflow-hidden p-8 flex flex-col items-center text-center transition-all duration-700", anomalyColor)}>
           <div className="absolute top-4 left-4 flex items-center gap-2">
             <Brain className="w-3 h-3 text-primary" />
@@ -421,7 +403,13 @@ export default function Dashboard() {
           </div>
           <Activity className={cn("w-12 h-12 mb-4 transition-colors duration-500", emiCalculations.anomalyProb > 75 ? "text-accent" : "text-primary")} />
           <h2 className="text-sm uppercase tracking-widest text-secondary font-semibold">Spend Anomaly Prob.</h2>
-          <div className="text-5xl font-bold my-4 tracking-tighter text-white">{emiCalculations.anomalyProb}%</div>
+          <motion.div 
+            animate={emiCalculations.anomalyProb > 75 ? { scale: [1, 1.05, 1], opacity: [1, 0.8, 1] } : {}}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="text-5xl font-bold my-4 tracking-tighter text-white"
+          >
+            {emiCalculations.anomalyProb}%
+          </motion.div>
           <p className="text-[10px] text-muted-foreground uppercase max-w-[200px] leading-relaxed">
             {emiCalculations.anomalyProb > 75 
               ? "High probability of spending spike. Recommend reserve scaling." 
@@ -429,7 +417,6 @@ export default function Dashboard() {
           </p>
         </Card>
 
-        {/* Zero-Knowledge Status (Data-as-Art) */}
         <Card className="glass-card p-0 relative overflow-hidden group">
           <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
             <Sparkles className="w-3 h-3 text-accent" />
@@ -448,7 +435,6 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        {/* Gamified Goal Tracker (Satellite Physics) */}
         <Card className="glass-card p-6 relative overflow-hidden flex flex-col items-center justify-center">
           <div className="absolute top-4 left-4 flex items-center gap-2">
             <Rocket className="w-3 h-3 text-accent" />
@@ -462,10 +448,10 @@ export default function Dashboard() {
              </div>
              <motion.div 
                animate={{ rotate: 360 }}
-               transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+               transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
                className="absolute w-40 h-40"
              >
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 p-2 bg-white/10 rounded-lg backdrop-blur-md border border-white/10">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 p-2 bg-white/10 rounded-lg backdrop-blur-md border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.1)]">
                   <Activity className="w-3 h-3 text-primary" />
                 </div>
              </motion.div>
@@ -742,7 +728,7 @@ export default function Dashboard() {
                   <Progress value={65} className="h-1 bg-white/10" />
                 </div>
                 <p className="text-[9px] text-muted-foreground mt-4 leading-relaxed uppercase">
-                  Open WhatsApp &gt; Settings &gt; Linked Devices &gt; Link a Device &gt; Link with phone instead
+                  Open WhatsApp {'>'} Settings {'>'} Linked Devices {'>'} Link a Device {'>'} Link with phone instead
                 </p>
                 <div className="flex items-center justify-center gap-2 text-[10px] text-secondary uppercase tracking-tight">
                   <Loader2 className="w-3 h-3 animate-spin" /> Refreshing Node Session...
