@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -11,7 +12,7 @@ import {
   Fingerprint, Download, MessageSquare,
   CheckCircle2 as SuccessIcon, IndianRupee, CreditCard,
   Terminal, Loader2, Send, Mail, Mic, MicOff, Search, Rocket, AlertTriangle,
-  ShieldAlert, Sparkles, Brain
+  ShieldAlert, Sparkles, Brain, FileText
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,22 @@ const mailSentAnimation = {
   }]
 };
 
+const checkmarkAnimation = {
+  v: "5.5.7",
+  fr: 60,
+  ip: 0,
+  op: 60,
+  w: 100,
+  h: 100,
+  nm: "Check",
+  ddd: 0,
+  assets: [],
+  layers: [{
+    ddd: 0, ind: 1, ty: 4, nm: "Checkmark", sr: 1, ks: { o: { a: 0, k: 100 }, r: { a: 0, k: 0 }, p: { a: 0, k: [50, 50] }, a: { a: 0, k: [0, 0] }, s: { a: 0, k: [100, 100] } },
+    shapes: [{ ty: "gr", nm: "Path", it: [{ ty: "sh", ks: { a: 1, k: [{ t: 0, s: [{ i: [[0, 0], [0, 0], [0, 0]], o: [[0, 0], [0, 0], [0, 0]], v: [[20, 50], [20, 50], [20, 50]], c: false }] }, { t: 30, s: [{ i: [[0, 0], [0, 0], [0, 0]], o: [[0, 0], [0, 0], [0, 0]], v: [[20, 50], [40, 70], [80, 30]], c: false }] }] } }, { ty: "st", c: { a: 0, k: [0.6, 0.8, 0.4, 1] }, o: { a: 0, k: 100 }, w: { a: 0, k: 6 }, lc: 2, lj: 2 }, { ty: "tr", p: { a: 0, k: [0, 0] }, r: { a: 0, k: 0 }, s: { a: 0, k: [100, 100] }, o: { a: 0, k: 100 } }] }]
+  }]
+};
+
 const forecastData = [
   { name: 'Jan', cost: 400, carbon: 240, cpu: 0.45 },
   { name: 'Feb', cost: 300, carbon: 139, cpu: 0.42 },
@@ -65,12 +82,13 @@ export default function Dashboard() {
   const { user } = useUser();
   const auth = useAuth();
   const storage = useStorage();
+  const { toast } = useToast();
+
   const [isGhostMode, setIsGhostMode] = useState(false);
   const [terminalInput, setTerminalInput] = useState('');
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
-  const { toast } = useToast();
 
   const [isWADialogOpen, setIsWADialogOpen] = useState(false);
   const [waStatus, setWaStatus] = useState<'IDLE' | 'ENTER_PHONE' | 'DISPLAY_CODE' | 'CONNECTED'>('IDLE');
@@ -79,6 +97,9 @@ export default function Dashboard() {
   
   const [isExporting, setIsExporting] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+
+  const [isSyncingReceipt, setIsSyncingReceipt] = useState(false);
+  const [showReceiptSuccess, setShowReceiptSuccess] = useState(false);
 
   const [loanPrincipal, setLoanPrincipal] = useState(50000);
   const [loanTenure, setLoanTenure] = useState(12);
@@ -274,6 +295,74 @@ export default function Dashboard() {
     }, 5000);
   };
 
+  /**
+   * Generates and exports a Tokyo Night styled payment receipt.
+   * Silently downloads and dispatches to WhatsApp.
+   */
+  const generateAndExportReceipt = async () => {
+    setIsSyncingReceipt(true);
+    try {
+      const doc = new jsPDF();
+      const transactionId = `TXN-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      const timestamp = new Date().toLocaleString();
+      const amount = emiCalculations.emi;
+      const remaining = emiCalculations.totalPayable - amount;
+
+      // Styling: Tokyo Night background
+      doc.setFillColor(26, 27, 38);
+      doc.rect(0, 0, 210, 297, 'F');
+
+      // Logo simulation in header
+      doc.setDrawColor(122, 162, 247);
+      doc.setLineWidth(1);
+      doc.line(10, 20, 200, 20);
+
+      // Text: Sky Blue accent
+      doc.setTextColor(122, 162, 247);
+      doc.setFontSize(22);
+      doc.text('SENTINEL-OPS RECEIPT', 10, 40);
+
+      doc.setTextColor(192, 202, 245);
+      doc.setFontSize(12);
+      doc.text(`Transaction ID: ${transactionId}`, 10, 60);
+      doc.text(`Date/Time: ${timestamp}`, 10, 70);
+      
+      doc.setTextColor(122, 162, 247);
+      doc.setFontSize(16);
+      doc.text(`Amount Paid: $${amount}`, 10, 90);
+      doc.text(`Remaining Balance: $${remaining}`, 10, 105);
+
+      doc.setTextColor(154, 165, 206);
+      doc.setFontSize(10);
+      doc.text('Payment processed via secure UPI Uplink.', 10, 130);
+
+      // Local download
+      doc.save(`Receipt_${transactionId}.pdf`);
+
+      // Sync with WhatsApp (Firebase Storage link)
+      const pdfBlob = doc.output('blob');
+      const storageRef = ref(storage, `receipts/${user?.uid}/${transactionId}.pdf`);
+      const uploadResult = await uploadBytes(storageRef, pdfBlob);
+      const pdfUrl = await getDownloadURL(uploadResult.ref);
+
+      await dispatchReport({
+        email: user?.email || '',
+        pdfUrl,
+        isGhostMode,
+        userName: user?.displayName || user?.email?.split('@')[0] || 'Operator'
+      });
+
+      setIsSyncingReceipt(false);
+      setShowReceiptSuccess(true);
+      setTimeout(() => setShowReceiptSuccess(false), 4000);
+      toast({ title: "RECEIPT SYNCED", description: "Official document dispatched across nodes." });
+
+    } catch (error: any) {
+      setIsSyncingReceipt(false);
+      toast({ variant: "destructive", title: "RECEIPT FAILED", description: "Could not sync document." });
+    }
+  };
+
   const exportReport = async () => {
     requireSecurity(async () => {
       setIsExporting(true);
@@ -325,6 +414,8 @@ export default function Dashboard() {
       setTimeout(() => {
         setPaymentStatus('SUCCESS');
         toast({ title: "PAYMENT SUCCESSFUL" });
+        // Automatically trigger receipt generation on success
+        generateAndExportReceipt();
       }, 2000);
     });
   };
@@ -728,7 +819,7 @@ export default function Dashboard() {
                   <Progress value={65} className="h-1 bg-white/10" />
                 </div>
                 <p className="text-[9px] text-muted-foreground mt-4 leading-relaxed uppercase">
-                  Open WhatsApp {'>'} Settings {'>'} Linked Devices {'>'} Link a Device {'>'} Link with phone instead
+                  Open WhatsApp {' > '} Settings {' > '} Linked Devices {' > '} Link a Device {' > '} Link with phone instead
                 </p>
                 <div className="flex items-center justify-center gap-2 text-[10px] text-secondary uppercase tracking-tight">
                   <Loader2 className="w-3 h-3 animate-spin" /> Refreshing Node Session...
@@ -767,6 +858,23 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={isSyncingReceipt} onOpenChange={() => {}}>
+        <DialogContent className="bg-[#1A1B26]/95 backdrop-blur-3xl border-primary/30 text-foreground glass-card max-w-sm">
+          <DialogHeader className="items-center text-center">
+            <DialogTitle className="text-lg text-primary tracking-tight uppercase font-semibold">Generating & Syncing Receipt</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center py-6 space-y-6 text-center">
+            <Loader2 className="w-12 h-12 text-primary animate-spin" />
+            <p className="text-[11px] text-secondary uppercase tracking-widest leading-relaxed">
+              Finalizing Tokyo Night Document Sync...
+            </p>
+            <div className="w-full space-y-2 px-6">
+              <Progress value={85} className="h-1 bg-white/5" />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {showSuccessAnimation && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl">
           <div className="flex flex-col items-center animate-in zoom-in-50 duration-500">
@@ -775,6 +883,18 @@ export default function Dashboard() {
             </div>
             <h2 className="text-3xl font-bold text-[#9ECE6A] neon-text uppercase tracking-tighter mt-4">Dispatch Confirmed</h2>
             <p className="text-secondary uppercase text-[10px] mt-2 tracking-[0.2em] font-semibold">Report secured across all channels</p>
+          </div>
+        </div>
+      )}
+
+      {showReceiptSuccess && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl">
+          <div className="flex flex-col items-center animate-in zoom-in-50 duration-500">
+            <div className="w-64 h-64">
+              <Lottie animationData={checkmarkAnimation} loop={false} />
+            </div>
+            <h2 className="text-3xl font-bold text-[#9ECE6A] neon-text uppercase tracking-tighter mt-4">Payment Receipt Ready</h2>
+            <p className="text-secondary uppercase text-[10px] mt-2 tracking-[0.2em] font-semibold">Synced to Linked WhatsApp Node</p>
           </div>
         </div>
       )}
