@@ -15,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased bg-[#050505] text-white selection:bg-primary selection:text-black min-h-screen overflow-x-hidden" suppressHydrationWarning>
+      <body className="antialiased bg-[#050505] text-foreground selection:bg-primary selection:text-black min-h-screen overflow-x-hidden" suppressHydrationWarning>
         {/* Animated Cybercurrency Background */}
         <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden bg-black">
           <div 
