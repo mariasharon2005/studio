@@ -271,12 +271,10 @@ export default function Dashboard() {
         let pdfUrl = '';
 
         try {
-          // Attempt Firebase Storage upload
           const storageRef = ref(storage, `reports/${user?.uid}/${Date.now()}_report.pdf`);
           const uploadResult = await uploadBytes(storageRef, pdfBlob);
           pdfUrl = await getDownloadURL(uploadResult.ref);
         } catch (storageError) {
-          // Fallback if storage permissions are missing or network blocks upload
           console.warn('[STORAGE UPLOAD FAILED] Falling back to simulated uplink.');
           pdfUrl = 'https://sentinel-ops.io/secure-report-link-simulated';
         }
@@ -447,15 +445,10 @@ export default function Dashboard() {
           </div>
           
           <div className="relative w-48 h-48 flex items-center justify-center">
-             {/* Orbital Path */}
              <div className="absolute w-32 h-32 border border-white/5 rounded-full" />
-             
-             {/* Central Planet */}
              <div className="w-16 h-16 bg-gradient-to-br from-primary via-accent to-purple-900 rounded-full shadow-[0_0_30px_hsla(var(--primary),0.3)] relative z-10 overflow-hidden">
                 <div className="absolute top-2 left-2 w-4 h-4 bg-white/20 rounded-full blur-sm" />
              </div>
-
-             {/* Satellite Orbit */}
              <motion.div 
                animate={{ rotate: 360 }}
                transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
@@ -753,9 +746,11 @@ export default function Dashboard() {
 
       <Dialog open={isExporting} onOpenChange={() => {}}>
         <DialogContent className="bg-[#1A1B26]/95 backdrop-blur-3xl border-accent/30 text-foreground glass-card max-w-sm">
-          <div className="flex flex-col items-center py-10 space-y-6 text-center">
+          <DialogHeader className="items-center text-center">
+            <DialogTitle className="text-lg text-accent tracking-tight uppercase font-semibold">Syncing Secure Nodes</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center py-6 space-y-6 text-center">
             <Loader2 className="w-12 h-12 text-accent animate-spin" />
-            <h2 className="text-lg text-accent tracking-tight uppercase font-semibold">Syncing Secure Nodes</h2>
             <p className="text-[11px] text-secondary uppercase tracking-widest leading-relaxed">
               Dispatching to Email, WhatsApp, and Telegram Mainframe...
             </p>
