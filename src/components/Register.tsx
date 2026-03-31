@@ -4,17 +4,18 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, Smartphone, Mail, Lock, ArrowRight, User } from 'lucide-react';
-import { useAuth, initiateEmailSignUp, useUser, setDocumentNonBlocking } from '@/firebase';
+import { Shield, Smartphone, Mail, Lock, ArrowRight, User, LogIn } from 'lucide-react';
+import { useAuth, initiateEmailSignUp, setDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
 interface RegisterProps {
   onSuccess: () => void;
+  onToggleLogin: () => void;
 }
 
-export default function Register({ onSuccess }: RegisterProps) {
+export default function Register({ onSuccess, onToggleLogin }: RegisterProps) {
   const auth = useAuth();
   const db = useFirestore();
   const { toast } = useToast();
@@ -44,15 +45,13 @@ export default function Register({ onSuccess }: RegisterProps) {
 
     setIsSubmitting(true);
     
-    // Initiate Firebase Sign Up (Non-blocking promise chain)
     initiateEmailSignUp(auth, formData.email, formData.password)
       .then((userCredential) => {
         const user = userCredential.user;
-        const userRef = doc(db, 'users', user.id);
+        const userRef = doc(db, 'users', user.uid);
         
-        // Save additional user data to Firestore
         setDocumentNonBlocking(userRef, {
-          id: user.id,
+          id: user.uid,
           email: formData.email,
           phoneNumber: formData.phone,
           firstName: formData.name.split(' ')[0],
@@ -64,6 +63,7 @@ export default function Register({ onSuccess }: RegisterProps) {
           title: "REGISTRATION SUCCESSFUL",
           description: "Sentinel profile initialized and encrypted.",
         });
+        onSuccess();
       })
       .catch((error: any) => {
         setIsSubmitting(false);
@@ -87,7 +87,6 @@ export default function Register({ onSuccess }: RegisterProps) {
 
   return (
     <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4 cyber-grid relative overflow-hidden">
-      {/* Background decorative elements */}
       <div className="absolute top-1/4 left-1/4 w-[300px] h-[300px] bg-primary/10 rounded-full blur-[100px] animate-pulse-slow"></div>
       <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] bg-secondary/10 rounded-full blur-[100px] animate-pulse-slow delay-700"></div>
 
@@ -157,9 +156,14 @@ export default function Register({ onSuccess }: RegisterProps) {
           </Button>
         </form>
 
-        <p className="mt-8 text-center text-[9px] text-muted-foreground font-code uppercase tracking-widest leading-loose">
-          By registering, you agree to the <span className="text-secondary cursor-pointer hover:underline">Sentinel-Ops Protocols</span> and biometric data retention policies.
-        </p>
+        <div className="mt-8 text-center">
+          <button 
+            onClick={onToggleLogin}
+            className="text-[10px] text-muted-foreground font-code uppercase tracking-widest hover:text-primary transition-colors flex items-center justify-center mx-auto gap-2"
+          >
+            <LogIn className="w-3 h-3" /> Already registered? Access Secure Link
+          </button>
+        </div>
       </div>
     </div>
   );

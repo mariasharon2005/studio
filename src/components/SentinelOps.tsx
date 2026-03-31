@@ -3,22 +3,20 @@
 import { useState, useEffect } from 'react';
 import SplashScreen from './SplashScreen';
 import Register from './Register';
+import Login from './Login';
 import Dashboard from './Dashboard';
 import BiometricVerify from './BiometricVerify';
 import { useUser } from '@/firebase';
 
-type AppState = 'SPLASH' | 'REGISTER' | 'BIOMETRIC' | 'DASHBOARD';
+type AppState = 'SPLASH' | 'LOGIN' | 'REGISTER' | 'BIOMETRIC' | 'DASHBOARD';
 
 export default function SentinelOps() {
   const [currentView, setCurrentView] = useState<AppState>('SPLASH');
   const { user, isUserLoading } = useUser();
 
-  // Reset to Splash if needed, but normally handled by initial state
-  // This effect handles the transition logic after Splash or Auth changes
   useEffect(() => {
-    // If we are in DASHBOARD but user logs out, go to REGISTER
-    if (!isUserLoading && !user && currentView === 'DASHBOARD') {
-      setCurrentView('REGISTER');
+    if (!isUserLoading && !user && (currentView === 'DASHBOARD' || currentView === 'BIOMETRIC')) {
+      setCurrentView('LOGIN');
     }
   }, [user, isUserLoading, currentView]);
 
@@ -26,12 +24,11 @@ export default function SentinelOps() {
     if (user) {
       setCurrentView('BIOMETRIC');
     } else {
-      setCurrentView('REGISTER');
+      setCurrentView('LOGIN');
     }
   };
 
-  const handleRegisterSuccess = () => {
-    // After registration, we go to Biometric for first-time link
+  const handleAuthSuccess = () => {
     setCurrentView('BIOMETRIC');
   };
 
@@ -45,8 +42,18 @@ export default function SentinelOps() {
         <SplashScreen onComplete={handleSplashComplete} />
       )}
       
+      {currentView === 'LOGIN' && !user && (
+        <Login 
+          onSuccess={handleAuthSuccess} 
+          onToggleRegister={() => setCurrentView('REGISTER')} 
+        />
+      )}
+
       {currentView === 'REGISTER' && !user && (
-        <Register onSuccess={handleRegisterSuccess} />
+        <Register 
+          onSuccess={handleAuthSuccess} 
+          onToggleLogin={() => setCurrentView('LOGIN')} 
+        />
       )}
 
       {currentView === 'BIOMETRIC' && (
