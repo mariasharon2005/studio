@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -10,7 +11,7 @@ import {
   Zap, Activity, EyeOff,
   Fingerprint, Download, MessageSquare,
   CheckCircle2 as SuccessIcon, IndianRupee, CreditCard,
-  Terminal, Loader2
+  Terminal, Loader2, Send, Mail
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -23,12 +24,33 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
-import { useAuth, useUser } from '@/firebase';
+import { Progress } from '@/components/ui/progress';
+import { useAuth, useUser, useStorage } from '@/firebase';
 import { signOut } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { cn } from '@/lib/utils';
 import { jsPDF } from 'jspdf';
 import { QRCodeSVG } from 'qrcode.react';
+import { dispatchReport } from '@/app/actions/report-actions';
+import Lottie from 'lottie-react';
 import Logo from './Logo';
+
+// Dummy Lottie for "Mail Sent" simulation
+const mailSentAnimation = {
+  v: "5.5.7",
+  fr: 60,
+  ip: 0,
+  op: 60,
+  w: 100,
+  h: 100,
+  nm: "Mail",
+  ddd: 0,
+  assets: [],
+  layers: [{
+    ddd: 0, ind: 1, ty: 4, nm: "Shape", sr: 1, ks: { o: { a: 0, k: 100 }, r: { a: 0, k: 0 }, p: { a: 0, k: [50, 50] }, a: { a: 0, k: [0, 0] }, s: { a: 1, k: [{ t: 0, s: [0, 0] }, { t: 30, s: [100, 100] }] } },
+    shapes: [{ ty: "gr", nm: "Rect", it: [{ ty: "rc", s: { a: 0, k: [40, 30] }, p: { a: 0, k: [0, 0] }, r: { a: 0, k: 2 } }, { ty: "st", c: { a: 0, k: [0.48, 0.64, 0.97, 1] }, o: { a: 0, k: 100 }, w: { a: 0, k: 2 } }, { ty: "tr", p: { a: 0, k: [0, 0] }, r: { a: 0, k: 0 }, s: { a: 0, k: [100, 100] }, o: { a: 0, k: 100 } }] }]
+  }]
+};
 
 const forecastData = [
   { name: 'Jan', cost: 400, carbon: 240, cpu: 0.45 },
@@ -42,6 +64,7 @@ const forecastData = [
 export default function Dashboard() {
   const { user } = useUser();
   const auth = useAuth();
+  const storage = useStorage();
   const [isGhostMode, setIsGhostMode] = useState(false);
   const [terminalInput, setTerminalInput] = useState('');
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
@@ -53,6 +76,10 @@ export default function Dashboard() {
   const [waStatus, setWaStatus] = useState<'IDLE' | 'ENTER_PHONE' | 'DISPLAY_CODE' | 'CONNECTED'>('IDLE');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [pairingCode, setPairingCode] = useState('');
+  const [qrRefreshTimer, setQrRefreshTimer] = useState(20);
+
+  const [isExporting, setIsExporting] = useState(false);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
   const [loanPrincipal, setLoanPrincipal] = useState(50000);
   const [loanTenure, setLoanTenure] = useState(12);
@@ -85,22 +112,37 @@ export default function Dashboard() {
     }
   }, [isGhostMode]);
 
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (waStatus === 'DISPLAY_CODE') {
+      interval = setInterval(() => {
+        setQrRefreshTimer((prev) => {
+          if (prev <= 1) {
+            setPairingCode(generateRandomCode());
+            return 20;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [waStatus]);
+
   const triggerHaptic = useCallback(() => {
     if (typeof window !== 'undefined' && window.navigator.vibrate) {
       window.navigator.vibrate(20);
     }
   }, []);
 
-  const [shadowResources] = useState([
-    { id: 'snap-9821x', type: 'Snapshot', saving: 14.50, reason: '180 days idle' },
-    { id: 'eip-0211a', type: 'Elastic IP', saving: 3.60, reason: 'Unattached' },
-    { id: 'vol-5522b', type: 'EBS Volume', saving: 42.00, reason: 'Detached' }
-  ]);
-
-  const [gpuNodes] = useState([
-    { id: 'gpu-h100-primary', type: 'NVIDIA H100', utilization: 4.2, hourlyCost: 3.45, isEmergency: true },
-    { id: 'gpu-a100-worker-1', type: 'NVIDIA A100', utilization: 88.0, hourlyCost: 2.10, isEmergency: false }
-  ]);
+  const generateRandomCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+      if (i === 3) code += '-';
+    }
+    return code;
+  };
 
   const requireSecurity = (action: () => void) => {
     setPendingAction(() => action);
@@ -148,13 +190,7 @@ export default function Dashboard() {
       toast({ title: "ERROR", description: "Invalid phone number.", variant: "destructive" });
       return;
     }
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 8; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-      if (i === 3) code += '-';
-    }
-    setPairingCode(code);
+    setPairingCode(generateRandomCode());
     setWaStatus('DISPLAY_CODE');
     
     setTimeout(() => {
@@ -163,19 +199,49 @@ export default function Dashboard() {
     }, 5000);
   };
 
-  const exportPDF = () => {
-    const doc = new jsPDF();
-    doc.setFillColor(26, 27, 38);
-    doc.rect(0, 0, 210, 297, 'F');
-    doc.setTextColor(122, 162, 247);
-    doc.setFontSize(22);
-    doc.text('SENTINEL-OPS: TOKYO NIGHT REPORT', 10, 20);
-    doc.setTextColor(192, 202, 245);
-    doc.setFontSize(10);
-    doc.text(`Generated for: ${user?.email}`, 10, 30);
-    doc.text(`Leakage Detected: $${shadowResources.reduce((a,b)=>a+b.saving,0).toFixed(2)}`, 10, 40);
-    doc.save(`sentinel_report_${Date.now()}.pdf`);
-    toast({ title: "REPORT EXPORTED", description: "PDF generated and encrypted." });
+  const exportReport = async () => {
+    requireSecurity(async () => {
+      setIsExporting(true);
+      
+      const doc = new jsPDF();
+      doc.setFillColor(26, 27, 38);
+      doc.rect(0, 0, 210, 297, 'F');
+      doc.setTextColor(122, 162, 247);
+      doc.setFontSize(22);
+      doc.text('SENTINEL-OPS: TOKYO NIGHT TREND REPORT', 10, 20);
+      doc.setTextColor(192, 202, 245);
+      doc.setFontSize(10);
+      doc.text(`Operator: ${user?.email}`, 10, 30);
+      doc.text(`Infrastructure Leakage Detected: $60.10`, 10, 40);
+      doc.text(`Financing Principal: $${loanPrincipal}`, 10, 50);
+      doc.text(`Monthly EMI: $${emiCalculations.emi}`, 10, 60);
+
+      const pdfBlob = doc.output('blob');
+      
+      try {
+        // Upload to Firebase Storage
+        const storageRef = ref(storage, `reports/${user?.uid}/${Date.now()}_report.pdf`);
+        const uploadResult = await uploadBytes(storageRef, pdfBlob);
+        const pdfUrl = await getDownloadURL(uploadResult.ref);
+
+        // Dispatch via Server Action
+        await dispatchReport({
+          email: user?.email || '',
+          pdfUrl,
+          isGhostMode,
+          userName: user?.displayName || user?.email?.split('@')[0] || 'Operator'
+        });
+
+        setIsExporting(false);
+        setShowSuccessAnimation(true);
+        setTimeout(() => setShowSuccessAnimation(false), 4000);
+
+        toast({ title: "DISPATCH SUCCESSFUL", description: "Report synced with Email & WhatsApp." });
+      } catch (error) {
+        setIsExporting(false);
+        toast({ variant: "destructive", title: "DISPATCH FAILED", description: "Secure transmission interrupted." });
+      }
+    });
   };
 
   const handleLogout = async () => {
@@ -190,7 +256,7 @@ export default function Dashboard() {
     setTerminalInput('');
     if (cmd === '/ghost_on') handleGhostModeToggle(true);
     else if (cmd === '/ghost_off') handleGhostModeToggle(false);
-    else if (cmd === '/report') exportPDF();
+    else if (cmd === '/report') exportReport();
     else toast({ title: "UNKNOWN COMMAND", variant: "destructive" });
   };
 
@@ -214,7 +280,7 @@ export default function Dashboard() {
           <Logo size="md" />
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-semibold text-primary tracking-tight neon-text">SENTINEL-OPS</h1>
+              <h1 className="text-3xl font-semibold text-primary tracking-tight neon-text uppercase">SENTINEL-OPS</h1>
               {isGhostMode && (
                 <Badge variant="secondary" className="bg-primary/20 text-primary border-primary/50 text-[10px] tracking-tight">
                   <EyeOff className="w-3 h-3 mr-1" /> STEALTH
@@ -255,9 +321,9 @@ export default function Dashboard() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <StatCard title="INFRA LEAKAGE" value={`$${shadowResources.reduce((a,b)=>a+b.saving,0).toFixed(2)}`} icon={<Ghost className="w-5 h-5 text-secondary" />} sub="3 ZOMBIE UNITS DETECTED" />
+        <StatCard title="INFRA LEAKAGE" value={`$60.10`} icon={<Ghost className="w-5 h-5 text-secondary" />} sub="3 ZOMBIE UNITS DETECTED" />
         <StatCard title="UNIT COST" value={`$0.30`} icon={<TrendingDown className="w-5 h-5 text-primary" />} sub="30-DAY EFFICIENCY TREND" />
-        <StatCard title="GPU BURN" value={`$${gpuNodes.reduce((acc, n) => acc + n.hourlyCost, 0).toFixed(2)}/hr`} icon={<Zap className="w-5 h-5 text-accent" />} sub="SPOT INSTANCES ACTIVE" />
+        <StatCard title="GPU BURN" value={`$5.55/hr`} icon={<Zap className="w-5 h-5 text-accent" />} sub="SPOT INSTANCES ACTIVE" />
         <StatCard title="FINANCING EMI" value={`$${emiCalculations.emi}`} icon={<IndianRupee className="w-5 h-5 text-primary" />} sub="LOAN ACTIVE" isEmi />
       </div>
 
@@ -265,7 +331,7 @@ export default function Dashboard() {
         <TabsList className="bg-white/5 backdrop-blur-xl border border-white/10 p-1 rounded-2xl h-auto flex-wrap">
           <TabsTrigger value="overview" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary text-[11px] rounded-xl px-6 uppercase tracking-tight h-10 font-semibold">Economics</TabsTrigger>
           <TabsTrigger value="fintech" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary text-[11px] rounded-xl px-6 uppercase tracking-tight h-10 font-semibold">Financing</TabsTrigger>
-          <TabsTrigger value="shadow" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary text-[11px] rounded-xl px-6 uppercase tracking-tight h-10 font-semibold">Shadow Scan</TabsTrigger>
+          <TabsTrigger value="dispatch" className="data-[state=active]:bg-accent/20 data-[state=active]:text-accent text-[11px] rounded-xl px-6 uppercase tracking-tight h-10 font-semibold">Dual Dispatch</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -388,10 +454,38 @@ export default function Dashboard() {
                     </div>
                   </DialogContent>
                 </Dialog>
-                <Button onClick={() => requireSecurity(() => exportPDF())} variant="outline" className="btn-tokyo flex-1 border-white/10 text-[11px] tracking-tight h-14 rounded-2xl uppercase font-semibold"><Download className="w-4 h-4 mr-2" /> RECEIPT</Button>
               </div>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="dispatch">
+          <Card className="glass-card p-8 border-accent/20">
+            <div className="flex flex-col items-center text-center space-y-6">
+              <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center border border-accent/30 mb-4">
+                <Send className="w-10 h-10 text-accent" />
+              </div>
+              <h2 className="text-2xl font-semibold text-foreground tracking-tight uppercase">Multi-Channel Export</h2>
+              <p className="text-secondary text-sm max-w-md leading-relaxed">
+                Sync your 6-month infrastructure trend report with linked WhatsApp, Telegram, and Email nodes simultaneously. 
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-3xl pt-6">
+                <ChannelStatus label="Email Node" status={!!user?.email} icon={<Mail className="w-4 h-4" />} />
+                <ChannelStatus label="WhatsApp Node" status={waStatus === 'CONNECTED'} icon={<MessageSquare className="w-4 h-4" />} />
+                <ChannelStatus label="Telegram Node" status={true} icon={<Send className="w-4 h-4" />} />
+              </div>
+
+              <Button 
+                onClick={exportReport} 
+                disabled={isExporting}
+                className="btn-tokyo mt-10 w-full max-w-sm h-16 bg-accent text-black font-semibold tracking-tight uppercase rounded-2xl shadow-[0_0_30px_rgba(187,154,247,0.2)]"
+              >
+                {isExporting ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Download className="w-5 h-5 mr-2" />}
+                {isExporting ? 'Syncing Nodes...' : 'Dispatch Trend Report'}
+              </Button>
+            </div>
+          </Card>
         </TabsContent>
       </Tabs>
 
@@ -433,7 +527,7 @@ export default function Dashboard() {
       </div>
 
       <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
-        <DialogContent className="bg-[#1A1B26]/95 backdrop-blur-3xl border-primary/30 text-foreground glass-card max-w-sm">
+        <DialogContent className="bg-[#1A1B26]/95 backdrop-blur-3xl border-primary/30 text-foreground glass-card max-sm">
           <DialogHeader className="items-center text-center">
             <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6 border border-primary/20">
               <Fingerprint className="w-10 h-10 text-primary animate-pulse" />
@@ -481,25 +575,82 @@ export default function Dashboard() {
             )}
             {waStatus === 'DISPLAY_CODE' && (
               <div className="w-full space-y-6 text-center">
-                <div className="glass-card p-10 rounded-3xl border-primary/20 bg-white/[0.02]">
-                  <span className="text-5xl font-mono text-primary neon-text tracking-widest">{pairingCode}</span>
+                <div className="glass-card p-10 rounded-3xl border-primary/20 bg-white/[0.02] relative overflow-hidden">
+                  <span className="text-5xl font-mono text-primary neon-text tracking-widest block mb-4">{pairingCode}</span>
+                  <Progress value={(qrRefreshTimer / 20) * 100} className="h-1 bg-white/10" />
                 </div>
-                <p className="text-[11px] text-secondary uppercase leading-relaxed">
-                  Open WhatsApp &gt; Settings &gt; Linked Devices &gt; Link a Device &gt; Link with phone number instead
+                <p className="text-[9px] text-muted-foreground mt-4 leading-relaxed uppercase">
+                  Open WhatsApp {'\u003E'} Settings {'\u003E'} Linked Devices {'\u003E'} Link a Device {'\u003E'} Link with phone number instead
                 </p>
-                <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto" />
+                <div className="flex items-center justify-center gap-2 text-[10px] text-secondary">
+                  <Loader2 className="w-3 h-3 animate-spin" /> REFRESHING IN {qrRefreshTimer}S
+                </div>
               </div>
             )}
             {waStatus === 'CONNECTED' && (
               <div className="flex flex-col items-center gap-6 animate-in zoom-in-50 duration-500">
                 <SuccessIcon className="w-20 h-20 text-[#9ECE6A] neon-text" />
-                <h3 className="text-[#9ECE6A] font-semibold text-2xl tracking-tight">AUTHORIZED</h3>
+                <h3 className="text-[#9ECE6A] font-semibold text-2xl tracking-tight uppercase">Authorized</h3>
                 <Button onClick={() => setIsWADialogOpen(false)} className="btn-tokyo bg-primary text-black w-full h-12 rounded-xl">CONTINUE</Button>
               </div>
             )}
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Syncing Report Modal */}
+      <Dialog open={isExporting} onOpenChange={() => {}}>
+        <DialogContent className="bg-[#1A1B26]/95 backdrop-blur-3xl border-accent/30 text-foreground glass-card max-w-sm">
+          <div className="flex flex-col items-center py-10 space-y-6 text-center">
+            <Loader2 className="w-12 h-12 text-accent animate-spin" />
+            <h2 className="text-lg text-accent tracking-tight uppercase font-semibold">Syncing Secure Nodes</h2>
+            <p className="text-[11px] text-secondary uppercase tracking-widest leading-relaxed">
+              Dispatching to Email, WhatsApp, and Telegram Mainframe...
+            </p>
+            <div className="w-full space-y-2 px-6">
+              <div className="flex justify-between text-[8px] uppercase text-secondary">
+                <span>Encryption</span>
+                <span>Active</span>
+              </div>
+              <Progress value={65} className="h-1 bg-white/5" />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Animation Overlay */}
+      {showSuccessAnimation && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl">
+          <div className="flex flex-col items-center animate-in zoom-in-50 duration-500">
+            <div className="w-64 h-64">
+              <Lottie animationData={mailSentAnimation} loop={false} />
+            </div>
+            <h2 className="text-3xl font-bold text-[#9ECE6A] neon-text uppercase tracking-tighter mt-4">Dispatch Confirmed</h2>
+            <p className="text-secondary uppercase text-[10px] mt-2 tracking-[0.2em]">Report secured across all channels</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChannelStatus({ label, status, icon }: { label: string, status: boolean, icon: React.ReactNode }) {
+  return (
+    <div className={cn(
+      "glass-card p-4 rounded-2xl border-l-[3px] transition-all",
+      status ? "border-l-[#9ECE6A] bg-[#9ECE6A]/5" : "border-l-destructive/50 bg-destructive/5"
+    )}>
+      <div className="flex items-center gap-3">
+        <div className={cn("p-2 rounded-lg", status ? "bg-[#9ECE6A]/20 text-[#9ECE6A]" : "bg-destructive/20 text-destructive")}>
+          {icon}
+        </div>
+        <div className="text-left">
+          <p className="text-[9px] text-secondary uppercase tracking-tight">{label}</p>
+          <p className={cn("text-[10px] font-semibold uppercase", status ? "text-[#9ECE6A]" : "text-destructive")}>
+            {status ? 'Online' : 'Disconnected'}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
