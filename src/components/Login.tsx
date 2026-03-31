@@ -1,10 +1,9 @@
-
 "use client"
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Shield, Mail, Lock, ArrowRight, UserPlus } from 'lucide-react';
+import { Mail, Lock, ArrowRight, UserPlus } from 'lucide-react';
 import { useAuth, initiateEmailSignIn } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import Logo from './Logo';
@@ -66,8 +65,8 @@ export default function Login({ onSuccess, onToggleRegister }: LoginProps) {
       <div className="max-w-md w-full p-10 rounded-3xl border border-primary/20 bg-black/80 backdrop-blur-3xl shadow-[0_0_50px_rgba(0,191,255,0.1)] z-10 glass-card">
         <div className="text-center mb-10 flex flex-col items-center">
           <Logo size="lg" className="mb-6" />
-          <h2 className="text-3xl font-headline text-white mb-2 tracking-[0.2em]">SENTINEL LOGIN</h2>
-          <p className="text-muted-foreground text-[10px] font-code uppercase tracking-[0.3em]">Accessing Mainframe...</p>
+          <h2 className="text-3xl font-semibold text-white mb-2 tracking-tight">SENTINEL LOGIN</h2>
+          <p className="text-muted-foreground text-[11px] uppercase tracking-widest">Accessing Mainframe...</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -77,7 +76,7 @@ export default function Login({ onSuccess, onToggleRegister }: LoginProps) {
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="pl-12 h-14 bg-black/50 border-white/10 focus:border-primary transition-all rounded-2xl text-sm font-tech"
+              className="pl-12 h-14 bg-black/50 border-white/10 focus:border-primary transition-all rounded-2xl text-base tracking-tight"
               placeholder="System Email"
             />
           </div>
@@ -88,14 +87,14 @@ export default function Login({ onSuccess, onToggleRegister }: LoginProps) {
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="pl-12 h-14 bg-black/50 border-white/10 focus:border-primary transition-all rounded-2xl text-sm font-tech"
+              className="pl-12 h-14 bg-black/50 border-white/10 focus:border-primary transition-all rounded-2xl text-base tracking-tight"
               placeholder="Encryption Key"
             />
           </div>
 
           <Button 
             disabled={isSubmitting}
-            className="w-full h-14 bg-primary text-black font-headline tracking-[0.2em] text-xs transition-all transform hover:scale-[1.02] shadow-[0_0_30px_rgba(0,191,255,0.2)] rounded-2xl"
+            className="w-full h-14 bg-primary text-black font-semibold tracking-tight uppercase transition-all transform hover:scale-[1.02] shadow-[0_0_30px_rgba(0,191,255,0.2)] rounded-2xl"
           >
             {isSubmitting ? 'DECRYPTING...' : 'ESTABLISH LINK'}
             <ArrowRight className="ml-2 w-4 h-4" />
@@ -105,7 +104,7 @@ export default function Login({ onSuccess, onToggleRegister }: LoginProps) {
         <div className="mt-10 text-center">
           <button 
             onClick={onToggleRegister}
-            className="text-[10px] text-muted-foreground font-code uppercase tracking-widest hover:text-primary transition-colors flex items-center justify-center mx-auto gap-2"
+            className="text-[11px] text-muted-foreground uppercase tracking-widest hover:text-primary transition-colors flex items-center justify-center mx-auto gap-2 font-semibold"
           >
             <UserPlus className="w-3 h-3" /> New Node? Initialize Module
           </button>

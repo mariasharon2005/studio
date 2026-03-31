@@ -1,4 +1,3 @@
-
 import type {Metadata} from 'next';
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase';
@@ -16,12 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&family=Raleway:wght@300;400;600&family=JetBrains+Mono&display=swap" rel="stylesheet" />
-      </head>
-      <body className="font-body antialiased bg-[#050505] text-white selection:bg-primary selection:text-black min-h-screen overflow-x-hidden" suppressHydrationWarning>
+      <body className="antialiased bg-[#050505] text-white selection:bg-primary selection:text-black min-h-screen overflow-x-hidden" suppressHydrationWarning>
         {/* Animated Cybercurrency Background */}
         <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden bg-black">
           <div 

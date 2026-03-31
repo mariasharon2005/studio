@@ -10,9 +10,28 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Raleway', 'sans-serif'],
-        headline: ['Montserrat', 'sans-serif'],
-        code: ['JetBrains Mono', 'monospace'],
+        sans: [
+          '-apple-system',
+          'BlinkMacSystemFont',
+          '"Segoe UI"',
+          'Roboto',
+          'Helvetica',
+          'Arial',
+          'sans-serif',
+          '"Apple Color Emoji"',
+          '"Segoe UI Emoji"',
+          '"Segoe UI Symbol"',
+        ],
+        mono: [
+          'ui-monospace',
+          'SFMono-Regular',
+          'Menlo',
+          'Monaco',
+          'Consolas',
+          '"Liberation Mono"',
+          '"Courier New"',
+          'monospace',
+        ],
       },
       colors: {
         background: 'hsl(var(--background))',

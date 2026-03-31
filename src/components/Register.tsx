@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from 'react';
@@ -27,17 +26,14 @@ export default function Register({ onSuccess, onToggleLogin }: RegisterProps) {
     phone: '',
     password: ''
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.name) newErrors.name = 'Required';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email';
-    if (!/^[6-9]\d{9}$/.test(formData.phone)) newErrors.phone = 'Invalid phone';
-    if (formData.password.length < 8) newErrors.password = 'Min 8 chars';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (!formData.name) return false;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return false;
+    if (!/^[6-9]\d{9}$/.test(formData.phone)) return false;
+    if (formData.password.length < 8) return false;
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,8 +81,8 @@ export default function Register({ onSuccess, onToggleLogin }: RegisterProps) {
       <div className="max-w-md w-full p-10 rounded-3xl border border-primary/20 bg-black/80 backdrop-blur-3xl shadow-[0_0_50px_rgba(0,191,255,0.1)] z-10 glass-card">
         <div className="text-center mb-10 flex flex-col items-center">
           <Logo size="lg" className="mb-6" />
-          <h2 className="text-3xl font-headline text-white mb-2 tracking-[0.2em]">INITIALIZE NODE</h2>
-          <p className="text-muted-foreground text-[10px] font-code uppercase tracking-[0.3em]">Establishing secure link...</p>
+          <h2 className="text-3xl font-semibold text-white mb-2 tracking-tight">INITIALIZE NODE</h2>
+          <p className="text-muted-foreground text-[11px] uppercase tracking-widest">Establishing secure link...</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -95,7 +91,7 @@ export default function Register({ onSuccess, onToggleLogin }: RegisterProps) {
             <Input
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="pl-12 h-14 bg-black/50 border-white/10 focus:border-primary transition-all rounded-2xl text-sm font-tech"
+              className="pl-12 h-14 bg-black/50 border-white/10 focus:border-primary transition-all rounded-2xl text-base tracking-tight"
               placeholder="Operator Identity"
             />
           </div>
@@ -106,7 +102,7 @@ export default function Register({ onSuccess, onToggleLogin }: RegisterProps) {
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="pl-12 h-14 bg-black/50 border-white/10 focus:border-primary transition-all rounded-2xl text-sm font-tech"
+              className="pl-12 h-14 bg-black/50 border-white/10 focus:border-primary transition-all rounded-2xl text-base tracking-tight"
               placeholder="Secure Email"
             />
           </div>
@@ -116,7 +112,7 @@ export default function Register({ onSuccess, onToggleLogin }: RegisterProps) {
             <Input
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="pl-12 h-14 bg-black/50 border-white/10 focus:border-primary transition-all rounded-2xl text-sm font-tech"
+              className="pl-12 h-14 bg-black/50 border-white/10 focus:border-primary transition-all rounded-2xl text-base tracking-tight"
               placeholder="Mobile Uplink"
             />
           </div>
@@ -127,14 +123,14 @@ export default function Register({ onSuccess, onToggleLogin }: RegisterProps) {
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="pl-12 h-14 bg-black/50 border-white/10 focus:border-primary transition-all rounded-2xl text-sm font-tech"
+              className="pl-12 h-14 bg-black/50 border-white/10 focus:border-primary transition-all rounded-2xl text-base tracking-tight"
               placeholder="Encryption Key"
             />
           </div>
 
           <Button 
             disabled={isSubmitting}
-            className="w-full h-14 bg-primary text-black font-headline tracking-[0.2em] text-xs transition-all transform hover:scale-[1.02] shadow-[0_0_30px_rgba(0,191,255,0.2)] rounded-2xl"
+            className="w-full h-14 bg-primary text-black font-semibold tracking-tight uppercase transition-all transform hover:scale-[1.02] shadow-[0_0_30px_rgba(0,191,255,0.2)] rounded-2xl"
           >
             {isSubmitting ? 'ENCRYPTING...' : 'REGISTER NODE'}
             <ArrowRight className="ml-2 w-4 h-4" />
@@ -144,7 +140,7 @@ export default function Register({ onSuccess, onToggleLogin }: RegisterProps) {
         <div className="mt-10 text-center">
           <button 
             onClick={onToggleLogin}
-            className="text-[10px] text-muted-foreground font-code uppercase tracking-widest hover:text-primary transition-colors flex items-center justify-center mx-auto gap-2"
+            className="text-[11px] text-muted-foreground uppercase tracking-widest hover:text-primary transition-colors flex items-center justify-center mx-auto gap-2 font-semibold"
           >
             <LogIn className="w-3 h-3" /> Node existing? Resume session
           </button>

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -7,11 +6,11 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell 
 } from 'recharts';
 import { 
-  Ghost, Leaf, TrendingDown, LogOut, 
+  Ghost, TrendingDown, LogOut, 
   Zap, Activity, EyeOff,
   Fingerprint, Download, MessageSquare,
-  CheckCircle2 as SuccessIcon, IndianRupee, CreditCard, Wallet,
-  Terminal, Globe, Loader2, Smartphone
+  CheckCircle2 as SuccessIcon, IndianRupee, CreditCard,
+  Terminal, Loader2
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -23,7 +22,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
 import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -31,16 +29,6 @@ import { cn } from '@/lib/utils';
 import { jsPDF } from 'jspdf';
 import { QRCodeSVG } from 'qrcode.react';
 import Logo from './Logo';
-
-// 6-Month Mock Data
-const sixMonthTrends = [
-  { name: 'Jan', cost: 4200, users: 8500, efficiency: 0.49 },
-  { name: 'Feb', cost: 3800, users: 9200, efficiency: 0.41 },
-  { name: 'Mar', cost: 4500, users: 11000, efficiency: 0.40 },
-  { name: 'Apr', cost: 5100, users: 13500, efficiency: 0.38 },
-  { name: 'May', cost: 4800, users: 14200, efficiency: 0.34 },
-  { name: 'Jun', cost: 5500, users: 18000, efficiency: 0.30 },
-];
 
 const forecastData = [
   { name: 'Mon', cost: 400, carbon: 240, cpu: 0.45 },
@@ -62,13 +50,11 @@ export default function Dashboard() {
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const { toast } = useToast();
 
-  // WhatsApp state
   const [isWADialogOpen, setIsWADialogOpen] = useState(false);
   const [waStatus, setWaStatus] = useState<'IDLE' | 'ENTER_PHONE' | 'DISPLAY_CODE' | 'CONNECTED'>('IDLE');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [pairingCode, setPairingCode] = useState('');
 
-  // FinTech state
   const [loanPrincipal, setLoanPrincipal] = useState(50000);
   const [loanTenure, setLoanTenure] = useState(12);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -106,23 +92,16 @@ export default function Dashboard() {
     }
   }, []);
 
-  const [shadowResources, setShadowResources] = useState([
+  const [shadowResources] = useState([
     { id: 'snap-9821x', type: 'Snapshot', saving: 14.50, reason: '180 days idle' },
     { id: 'eip-0211a', type: 'Elastic IP', saving: 3.60, reason: 'Unattached' },
     { id: 'vol-5522b', type: 'EBS Volume', saving: 42.00, reason: 'Detached' }
   ]);
 
-  const [gpuNodes, setGpuNodes] = useState([
+  const [gpuNodes] = useState([
     { id: 'gpu-h100-primary', type: 'NVIDIA H100', utilization: 4.2, hourlyCost: 3.45, isEmergency: true },
     { id: 'gpu-a100-worker-1', type: 'NVIDIA A100', utilization: 88.0, hourlyCost: 2.10, isEmergency: false }
   ]);
-
-  const [currentRegion, setCurrentRegion] = useState({
-    id: 'US-East-1',
-    name: 'N. Virginia',
-    intensity: '0.47 kgCO2/kWh',
-    status: 'High Carbon'
-  });
 
   const requireSecurity = (action: () => void) => {
     setPendingAction(() => action);
@@ -236,20 +215,20 @@ export default function Dashboard() {
           <Logo size="md" />
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-headline text-primary neon-text tracking-[0.2em]">SENTINEL-OPS</h1>
+              <h1 className="text-3xl font-semibold text-primary tracking-tight">SENTINEL-OPS</h1>
               {isGhostMode && (
-                <Badge variant="secondary" className="bg-primary/20 text-primary border-primary/50 text-[8px] tracking-widest font-tech">
+                <Badge variant="secondary" className="bg-primary/20 text-primary border-primary/50 text-[10px] tracking-tight neon-text">
                   <EyeOff className="w-3 h-3 mr-1" /> STEALTH
                 </Badge>
               )}
             </div>
-            <p className="font-tech text-muted-foreground text-[9px] tracking-[0.3em] uppercase mt-1">Operator: {user?.email}</p>
+            <p className="text-muted-foreground text-[11px] uppercase mt-1">Operator: {user?.email}</p>
           </div>
         </div>
         
         <div className="flex gap-4 items-center w-full md:w-auto justify-end">
           <div className="flex items-center gap-3 glass-card p-2 px-4 rounded-2xl">
-            <Label htmlFor="ghost-mode" className="text-[9px] font-tech text-muted-foreground uppercase tracking-widest">Ghost Mode</Label>
+            <Label htmlFor="ghost-mode" className="text-[10px] text-muted-foreground uppercase">Ghost Mode</Label>
             <Switch 
               id="ghost-mode" 
               checked={isGhostMode} 
@@ -262,7 +241,7 @@ export default function Dashboard() {
             onClick={handleLinkWhatsApp}
             variant="outline" 
             className={cn(
-              "glass-card border-none hover:bg-white/10 rounded-2xl h-10 px-4 text-[9px] font-tech tracking-widest",
+              "glass-card border-none hover:bg-white/10 rounded-2xl h-10 px-4 text-[10px] tracking-tight font-semibold",
               waStatus === 'CONNECTED' ? "text-green-400" : "text-primary"
             )}
           >
@@ -276,20 +255,19 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Security Dialog */}
       <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
-        <DialogContent className="bg-black/95 backdrop-blur-3xl border-primary/30 text-white font-tech glass-card max-w-sm">
+        <DialogContent className="bg-black/95 backdrop-blur-3xl border-primary/30 text-white glass-card max-w-sm">
           <DialogHeader className="items-center text-center">
             <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6 border border-primary/20">
               <Fingerprint className="w-10 h-10 text-primary animate-pulse" />
             </div>
-            <DialogTitle className="font-headline text-lg text-primary tracking-widest uppercase">Biometric Verification</DialogTitle>
+            <DialogTitle className="text-lg text-primary tracking-tight uppercase">Biometric Verification</DialogTitle>
           </DialogHeader>
           <div className="py-6 space-y-6 text-center">
-            <Button onClick={handleBiometricAuth} className="w-full bg-primary text-black font-headline h-14 tracking-[0.2em] rounded-2xl">SCAN BIOMETRICS</Button>
+            <Button onClick={handleBiometricAuth} className="w-full bg-primary text-black font-semibold h-14 tracking-tight rounded-2xl">SCAN BIOMETRICS</Button>
             <div className="relative">
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/10"></span></div>
-              <div className="relative flex justify-center text-[9px] uppercase"><span className="bg-black px-2 text-muted-foreground tracking-widest">Fallback</span></div>
+              <div className="relative flex justify-center text-[10px] uppercase"><span className="bg-black px-2 text-muted-foreground">Fallback</span></div>
             </div>
             <form onSubmit={handlePinAuth} className="space-y-3">
               <Input 
@@ -298,19 +276,18 @@ export default function Dashboard() {
                 value={pinInput}
                 onChange={(e) => setPinInput(e.target.value)}
                 placeholder="6-DIGIT PIN" 
-                className="bg-black/50 border-white/10 text-center tracking-[1em] h-12 text-lg rounded-xl" 
+                className="bg-black/50 border-white/10 text-center tracking-[1em] h-12 text-lg rounded-xl text-base" 
               />
-              <Button type="submit" variant="outline" className="w-full border-white/10 rounded-xl h-12 uppercase text-[10px] tracking-widest">Verify PIN</Button>
+              <Button type="submit" variant="outline" className="w-full border-white/10 rounded-xl h-12 uppercase text-[10px] tracking-tight">Verify PIN</Button>
             </form>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* WhatsApp Linker Dialog */}
       <Dialog open={isWADialogOpen} onOpenChange={setIsWADialogOpen}>
-        <DialogContent className="bg-black/95 backdrop-blur-3xl border-primary/30 text-white font-tech glass-card max-w-md">
+        <DialogContent className="bg-black/95 backdrop-blur-3xl border-primary/30 text-white glass-card max-w-md">
           <DialogHeader className="items-center text-center">
-            <DialogTitle className="font-headline text-xl text-primary tracking-widest uppercase">WhatsApp Pairing</DialogTitle>
+            <DialogTitle className="text-xl text-primary tracking-tight uppercase">WhatsApp Pairing</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center py-6 space-y-6">
             {waStatus === 'ENTER_PHONE' && (
@@ -320,17 +297,17 @@ export default function Dashboard() {
                   placeholder="+91 98765-43210"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="bg-black/50 border-white/10 text-center text-lg h-14 rounded-2xl"
+                  className="bg-black/50 border-white/10 text-center text-lg h-14 rounded-2xl text-base"
                 />
-                <Button onClick={generatePairingCode} className="w-full bg-primary text-black hover:bg-primary/80 font-headline h-14 tracking-widest rounded-2xl">PAIR WITH PHONE</Button>
+                <Button onClick={generatePairingCode} className="w-full bg-primary text-black hover:bg-primary/80 font-semibold h-14 tracking-tight rounded-2xl">PAIR WITH PHONE</Button>
               </div>
             )}
             {waStatus === 'DISPLAY_CODE' && (
               <div className="w-full space-y-6 text-center">
                 <div className="glass-card p-10 rounded-3xl border-primary/20 bg-white/[0.02]">
-                  <span className="text-5xl font-code text-primary neon-text tracking-widest">{pairingCode}</span>
+                  <span className="text-5xl font-mono text-primary neon-text tracking-widest">{pairingCode}</span>
                 </div>
-                <p className="text-[10px] text-muted-foreground uppercase font-tech tracking-widest leading-relaxed">
+                <p className="text-[11px] text-muted-foreground uppercase leading-relaxed">
                   Open WhatsApp &gt; Settings &gt; Linked Devices &gt; Link a Device &gt; Link with phone number instead
                 </p>
                 <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto" />
@@ -339,7 +316,7 @@ export default function Dashboard() {
             {waStatus === 'CONNECTED' && (
               <div className="flex flex-col items-center gap-6 animate-in zoom-in-50 duration-500">
                 <SuccessIcon className="w-20 h-20 text-green-500 neon-text" />
-                <h3 className="text-green-500 font-headline text-2xl tracking-widest">AUTHORIZED</h3>
+                <h3 className="text-green-500 font-semibold text-2xl tracking-tight">AUTHORIZED</h3>
                 <Button onClick={() => setIsWADialogOpen(false)} className="bg-primary text-black w-full h-12 rounded-xl">CONTINUE</Button>
               </div>
             )}
@@ -351,20 +328,20 @@ export default function Dashboard() {
         <StatCard title="INFRA LEAKAGE" value={`$${shadowResources.reduce((a,b)=>a+b.saving,0).toFixed(2)}`} icon={<Ghost className="w-5 h-5 text-secondary" />} sub="3 ZOMBIE UNITS DETECTED" />
         <StatCard title="UNIT COST" value={`$0.30`} icon={<TrendingDown className="w-5 h-5 text-primary" />} sub="30-DAY EFFICIENCY TREND" />
         <StatCard title="GPU BURN" value={`$${gpuNodes.reduce((acc, n) => acc + n.hourlyCost, 0).toFixed(2)}/hr`} icon={<Zap className="w-5 h-5 text-yellow-400" />} sub="SPOT INSTANCES ACTIVE" />
-        <StatCard title="FINANCING EMI" value={`$${emiCalculations.emi}`} icon={<IndianRupee className="w-5 h-5 text-primary" />} sub="LOAN ACTIVE" />
+        <StatCard title="FINANCING EMI" value={`$${emiCalculations.emi}`} icon={<IndianRupee className="w-5 h-5 text-primary" />} sub="LOAN ACTIVE" isEmi />
       </div>
 
       <Tabs defaultValue="overview" className="space-y-10">
         <TabsList className="bg-white/5 backdrop-blur-xl border border-white/10 p-1 rounded-2xl h-auto flex-wrap">
-          <TabsTrigger value="overview" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-tech text-[10px] rounded-xl px-6 uppercase tracking-widest h-10">Economics</TabsTrigger>
-          <TabsTrigger value="fintech" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-tech text-[10px] rounded-xl px-6 uppercase tracking-widest h-10">Financing</TabsTrigger>
-          <TabsTrigger value="shadow" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary font-tech text-[10px] rounded-xl px-6 uppercase tracking-widest h-10">Shadow Scan</TabsTrigger>
+          <TabsTrigger value="overview" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary text-[11px] rounded-xl px-6 uppercase tracking-tight h-10 font-semibold">Economics</TabsTrigger>
+          <TabsTrigger value="fintech" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary text-[11px] rounded-xl px-6 uppercase tracking-tight h-10 font-semibold">Financing</TabsTrigger>
+          <TabsTrigger value="shadow" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary text-[11px] rounded-xl px-6 uppercase tracking-tight h-10 font-semibold">Shadow Scan</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
           <Card className="glass-card border-primary/20 overflow-hidden">
             <CardHeader>
-              <CardTitle className="font-headline text-sm text-primary flex items-center gap-2 uppercase tracking-widest">
+              <CardTitle className="text-sm text-primary flex items-center gap-2 uppercase tracking-tight">
                 <Activity className="w-4 h-4" /> Live Performance Node
               </CardTitle>
             </CardHeader>
@@ -394,21 +371,21 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card className="glass-card border-primary/20 p-6">
               <CardHeader>
-                <CardTitle className="font-headline text-lg text-primary flex items-center gap-2 tracking-widest uppercase">
+                <CardTitle className="text-lg text-primary flex items-center gap-2 tracking-tight uppercase font-semibold">
                   <IndianRupee className="w-5 h-5" /> Infrastructure Financing
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-10 pt-6">
                 <div className="space-y-6">
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center text-[10px] font-tech uppercase tracking-widest text-muted-foreground">
+                    <div className="flex justify-between items-center text-[11px] uppercase tracking-tight text-muted-foreground font-semibold">
                       <span>Principal Amount</span>
                       <span className="text-primary text-sm">${loanPrincipal}</span>
                     </div>
                     <Slider value={[loanPrincipal]} min={5000} max={200000} step={5000} onValueChange={(v) => setLoanPrincipal(v[0])} />
                   </div>
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center text-[10px] font-tech uppercase tracking-widest text-muted-foreground">
+                    <div className="flex justify-between items-center text-[11px] uppercase tracking-tight text-muted-foreground font-semibold">
                       <span>Tenure (Months)</span>
                       <span className="text-primary text-sm">{loanTenure}M</span>
                     </div>
@@ -417,7 +394,7 @@ export default function Dashboard() {
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
-                  <FinStat label="Monthly EMI" value={`$${emiCalculations.emi}`} color="text-primary" />
+                  <FinStat label="Monthly EMI" value={`$${emiCalculations.emi}`} color="text-primary neon-text" />
                   <FinStat label="Interest" value={`$${emiCalculations.totalInterest}`} color="text-secondary" />
                   <FinStat label="Total Payable" value={`$${emiCalculations.totalPayable}`} color="text-white" />
                 </div>
@@ -444,19 +421,19 @@ export default function Dashboard() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <p className="text-[8px] text-muted-foreground uppercase tracking-widest">Interest Ratio</p>
-                  <p className="text-2xl font-headline text-secondary">{emiCalculations.interestRatio}%</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-tight">Interest Ratio</p>
+                  <p className="text-2xl font-semibold text-secondary">{emiCalculations.interestRatio}%</p>
                 </div>
               </div>
 
               <div className="flex gap-4 w-full">
                 <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button className="flex-1 bg-primary text-black font-headline h-14 tracking-widest rounded-2xl">PAY EMI <CreditCard className="w-4 h-4 ml-2" /></Button>
+                    <Button className="flex-1 bg-primary text-black font-semibold h-14 tracking-tight rounded-2xl uppercase">PAY EMI <CreditCard className="w-4 h-4 ml-2" /></Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-black/95 backdrop-blur-3xl border-primary/30 text-white font-tech glass-card max-w-sm">
+                  <DialogContent className="bg-black/95 backdrop-blur-3xl border-primary/30 text-white glass-card max-w-sm">
                     <DialogHeader className="items-center text-center">
-                      <DialogTitle className="font-headline text-lg text-primary tracking-widest uppercase">UPI Secure Link</DialogTitle>
+                      <DialogTitle className="text-lg text-primary tracking-tight uppercase">UPI Secure Link</DialogTitle>
                     </DialogHeader>
                     <div className="flex flex-col items-center py-6 space-y-6">
                       {paymentStatus === 'IDLE' ? (
@@ -464,24 +441,24 @@ export default function Dashboard() {
                           <div className="p-4 bg-white rounded-2xl">
                             <QRCodeSVG value={`upi://pay?pa=sentinel@ops&am=${emiCalculations.emi}`} size={160} />
                           </div>
-                          <Button onClick={handlePayment} className="w-full bg-primary text-black font-headline h-14 rounded-2xl tracking-widest">I HAVE PAID</Button>
+                          <Button onClick={handlePayment} className="w-full bg-primary text-black font-semibold h-14 rounded-2xl tracking-tight">I HAVE PAID</Button>
                         </>
                       ) : paymentStatus === 'PAYING' ? (
                         <div className="py-10 flex flex-col items-center gap-4">
                           <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                          <p className="text-[10px] tracking-widest uppercase">Verifying Uplink...</p>
+                          <p className="text-[11px] tracking-tight uppercase">Verifying Uplink...</p>
                         </div>
                       ) : (
                         <div className="py-10 flex flex-col items-center gap-6 animate-in zoom-in-50">
                           <SuccessIcon className="w-16 h-16 text-green-500 neon-text" />
-                          <h3 className="text-green-500 font-headline text-xl tracking-widest">TRANSACTION VERIFIED</h3>
+                          <h3 className="text-green-500 font-semibold text-xl tracking-tight">TRANSACTION VERIFIED</h3>
                           <Button onClick={() => setIsPaymentDialogOpen(false)} className="bg-primary text-black w-full h-12 rounded-xl">DONE</Button>
                         </div>
                       )}
                     </div>
                   </DialogContent>
                 </Dialog>
-                <Button onClick={() => requireSecurity(() => exportPDF())} variant="outline" className="flex-1 border-white/10 text-[10px] tracking-widest h-14 rounded-2xl"><Download className="w-4 h-4 mr-2" /> RECEIPT</Button>
+                <Button onClick={() => requireSecurity(() => exportPDF())} variant="outline" className="flex-1 border-white/10 text-[11px] tracking-tight h-14 rounded-2xl uppercase font-semibold"><Download className="w-4 h-4 mr-2" /> RECEIPT</Button>
               </div>
             </Card>
           </div>
@@ -491,15 +468,16 @@ export default function Dashboard() {
       <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
         <Card className="lg:col-span-2 glass-card border-white/5 p-6">
           <CardHeader className="pb-4 border-b border-white/5">
-            <CardTitle className="font-tech text-[9px] text-muted-foreground uppercase tracking-[0.4em] flex items-center gap-2">
+            <CardTitle className="text-[10px] text-muted-foreground uppercase tracking-tight flex items-center gap-2 font-semibold">
               <Terminal className="w-3 h-3 text-primary" /> Sentinel Terminal [Node_5]
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6 h-56 flex flex-col">
-            <div className="flex-1 overflow-y-auto space-y-1 font-tech text-[10px] text-muted-foreground/60 mb-6">
+            <div className="flex-1 overflow-y-auto space-y-1 font-mono text-[11px] text-muted-foreground/60 mb-6">
               <p><span className="text-primary">[BOOT]</span> Kernel sequence finalized.</p>
               <p><span className="text-primary">[INFO]</span> FinTech financing ratio: {emiCalculations.interestRatio}%.</p>
               {waStatus === 'CONNECTED' && <p className="text-green-400">[LINK] WhatsApp uplink authorized.</p>}
+              {isGhostMode && <p className="text-primary neon-text">[STEALTH] Network ghosting engaged.</p>}
             </div>
             <form onSubmit={handleTerminalCommand} className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary font-bold opacity-40"> {'>'} </span>
@@ -507,7 +485,7 @@ export default function Dashboard() {
                 value={terminalInput}
                 onChange={(e) => setTerminalInput(e.target.value)}
                 placeholder="ENTER COMMAND..."
-                className="bg-black/40 border-white/10 pl-10 font-tech text-[10px] h-12 rounded-full tracking-widest"
+                className="bg-black/40 border-white/10 pl-10 font-mono text-[11px] h-12 rounded-full tracking-tight text-base"
               />
             </form>
           </CardContent>
@@ -515,7 +493,7 @@ export default function Dashboard() {
 
         <Card className="glass-card border-white/5 p-6">
           <CardHeader>
-            <CardTitle className="font-headline text-[10px] text-primary uppercase tracking-widest mb-4">Core Load</CardTitle>
+            <CardTitle className="text-[11px] text-primary uppercase tracking-tight mb-4 font-semibold">Core Load</CardTitle>
           </CardHeader>
           <CardContent className="space-y-8">
             <LoadProgress label="CPU UTILIZATION" value={42} color="bg-primary" />
@@ -527,18 +505,18 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ title, value, icon, sub }: { title: string, value: string, icon: React.ReactNode, sub: string }) {
+function StatCard({ title, value, icon, sub, isEmi }: { title: string, value: string, icon: React.ReactNode, sub: string, isEmi?: boolean }) {
   return (
     <Card className="glass-card hover:bg-white/10 transition-all group overflow-hidden relative rounded-3xl border-white/5 border-l-primary/30 border-l-[3px]">
       <div className="absolute -top-4 -right-4 p-8 opacity-5 group-hover:opacity-20 transition-opacity">
         {icon}
       </div>
       <CardHeader className="pb-1 relative z-10">
-        <p className="text-[9px] font-tech text-muted-foreground uppercase tracking-[0.2em] mb-2">{title}</p>
-        <CardTitle className="text-3xl font-headline text-white group-hover:text-primary transition-colors tracking-tighter duration-500">{value}</CardTitle>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-tight font-semibold mb-2">{title}</p>
+        <CardTitle className={cn("text-3xl font-semibold text-white group-hover:text-primary transition-colors tracking-tighter duration-500", isEmi && "neon-text text-primary")}>{value}</CardTitle>
       </CardHeader>
       <CardContent className="relative z-10">
-        <p className="text-[8px] font-tech text-primary/60 uppercase truncate tracking-widest">{sub}</p>
+        <p className="text-[9px] text-primary/60 uppercase truncate tracking-tight font-semibold">{sub}</p>
       </CardContent>
     </Card>
   );
@@ -547,8 +525,8 @@ function StatCard({ title, value, icon, sub }: { title: string, value: string, i
 function FinStat({ label, value, color }: { label: string, value: string, color: string }) {
   return (
     <div className="p-4 glass-card rounded-2xl border-white/5 text-center">
-      <p className="text-[7px] text-muted-foreground uppercase tracking-widest mb-2">{label}</p>
-      <p className={cn("text-lg font-headline", color)}>{value}</p>
+      <p className="text-[9px] text-muted-foreground uppercase tracking-tight font-semibold mb-2">{label}</p>
+      <p className={cn("text-lg font-semibold", color)}>{value}</p>
     </div>
   );
 }
@@ -556,7 +534,7 @@ function FinStat({ label, value, color }: { label: string, value: string, color:
 function LoadProgress({ label, value, color }: { label: string, value: number, color: string }) {
   return (
     <div className="space-y-3">
-      <div className="flex justify-between text-[8px] font-tech uppercase tracking-widest">
+      <div className="flex justify-between text-[10px] uppercase tracking-tight font-semibold">
         <span>{label}</span>
         <span className="text-primary">{value}%</span>
       </div>

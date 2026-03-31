@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Fingerprint, ShieldCheck, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
@@ -59,10 +58,10 @@ export default function BiometricVerify({ onSuccess }: BiometricVerifyProps) {
         <div className="mb-8">
           <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6 border border-primary/30 relative">
             <div className="absolute inset-0 bg-primary/5 rounded-full animate-ping"></div>
-            <Fingerprint className="w-12 h-12 text-primary neon-text" />
+            <Fingerprint className="w-12 h-12 text-primary" />
           </div>
-          <h2 className="text-2xl font-headline text-white tracking-[0.2em] mb-2">SECURE GATEWAY</h2>
-          <p className="text-[10px] text-muted-foreground font-code uppercase tracking-widest">
+          <h2 className="text-2xl font-semibold text-white tracking-tight mb-2 uppercase">SECURE GATEWAY</h2>
+          <p className="text-[11px] text-muted-foreground uppercase tracking-widest">
             Identity link required for user: {user?.email}
           </p>
         </div>
@@ -70,7 +69,7 @@ export default function BiometricVerify({ onSuccess }: BiometricVerifyProps) {
         <div className="space-y-6">
           <Button 
             onClick={handleBiometricAuth} 
-            className="w-full bg-primary text-black hover:bg-primary/80 font-headline py-8 text-lg tracking-[0.2em] shadow-[0_0_30px_rgba(0,191,255,0.2)] rounded-2xl"
+            className="w-full bg-primary text-black hover:bg-primary/80 font-semibold py-8 text-lg tracking-tight shadow-[0_0_30px_rgba(0,191,255,0.2)] rounded-2xl uppercase"
           >
             <ShieldCheck className="w-6 h-6 mr-2" /> SCAN BIOMETRICS
           </Button>
@@ -79,8 +78,8 @@ export default function BiometricVerify({ onSuccess }: BiometricVerifyProps) {
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-white/10"></span>
             </div>
-            <div className="relative flex justify-center text-[9px] uppercase">
-              <span className="bg-[#050505] px-4 text-muted-foreground tracking-[0.3em]">Fallback Protocol</span>
+            <div className="relative flex justify-center text-[11px] uppercase">
+              <span className="bg-[#050505] px-4 text-muted-foreground tracking-widest">Fallback Protocol</span>
             </div>
           </div>
 
@@ -93,20 +92,20 @@ export default function BiometricVerify({ onSuccess }: BiometricVerifyProps) {
                 value={pinInput}
                 onChange={(e) => setPinInput(e.target.value)}
                 placeholder="ENTER 6-DIGIT PIN" 
-                className="bg-black/50 border-white/10 text-center tracking-[1em] h-16 text-xl rounded-2xl focus:border-primary/50 transition-all font-code" 
+                className="bg-black/50 border-white/10 text-center tracking-[1em] h-16 text-xl rounded-2xl focus:border-primary/50 transition-all text-base" 
               />
             </div>
             <Button 
               type="submit" 
               variant="outline" 
-              className="w-full border-white/10 text-[10px] uppercase font-tech tracking-widest h-12 hover:bg-white/5 rounded-xl"
+              className="w-full border-white/10 text-[11px] uppercase tracking-widest h-12 hover:bg-white/5 rounded-xl font-semibold"
             >
               Verify Fallback
             </Button>
           </form>
         </div>
 
-        <p className="mt-10 text-[8px] text-muted-foreground font-code uppercase tracking-widest">
+        <p className="mt-10 text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
           Kernel Security Mode: High-Fidelity Multi-Factor Active
         </p>
       </div>
