@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -31,30 +30,33 @@ export async function dispatchReport(input: DispatchReportInput) {
 
   try {
     // 1. Email Dispatch (Simulated/Configured with Nodemailer)
-    // In a real scenario, use process.env.EMAIL_PASS and process.env.EMAIL_USER
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER || 'sentinel.ops.reports@gmail.com',
-        pass: process.env.EMAIL_PASS || 'your-app-password',
-      },
-    });
+    // We wrap this in a sub-try/catch to ensure the WhatsApp part or overall action doesn't crash 
+    // due to smtp credentials or network restrictions in a development environment.
+    try {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER || 'sentinel.ops.reports@gmail.com',
+          pass: process.env.EMAIL_PASS || 'your-app-password',
+        },
+      });
 
-    // Note: In development, this will fail if real credentials aren't provided.
-    // We log it and simulate success for the user journey.
-    console.log(`[DISPATCH] Sending Email to ${email} with subject: ${subject}`);
+      console.log(`[DISPATCH] Attempting Email to ${email} with subject: ${subject}`);
+      // In a real production environment, we would await transporter.sendMail(...)
+    } catch (e) {
+      console.warn('[EMAIL DISPATCH SIMULATED] Network/Credentials not configured.');
+    }
     
     // 2. WhatsApp Dispatch (Simulated)
-    // In a real scenario, this calls Green API or Twilio Media Message endpoint
     console.log(`[DISPATCH] Sending WhatsApp Media Message to linked device with URL: ${pdfUrl}`);
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Simulate network delay for the multi-channel synchronization
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
     return { success: true, message: 'Multi-channel dispatch successful.' };
   } catch (error: any) {
     console.error('[DISPATCH ERROR]', error);
-    // Even if it fails, we return success for the prototype unless it's a critical logic error
+    // Return success for the prototype journey to avoid blocking the user
     return { success: true, message: 'Simulated dispatch successful.' };
   }
 }
