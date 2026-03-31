@@ -18,6 +18,12 @@
       "description": "Sample QR Code for WhatsApp linking",
       "imageUrl": "https://picsum.photos/seed/qr-code/400/400",
       "imageHint": "qr code"
+    },
+    {
+      "id": "crypto-hifi",
+      "description": "Futuristic crypto blockchain network with neon nodes",
+      "imageUrl": "https://picsum.photos/seed/crypto-hifi/1920/1080",
+      "imageHint": "blockchain network"
     }
   ]
 }

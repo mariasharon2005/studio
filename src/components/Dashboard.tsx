@@ -11,7 +11,8 @@ import {
   Bell, Send, Zap, BarChart3, Globe, Trash2, CheckCircle2, Loader2, Info,
   Terminal, Cpu, Activity, EyeOff, ShieldCheck,
   Fingerprint, Download, AlertTriangle, MessageSquare, Smartphone,
-  CheckCircle2 as SuccessIcon, ArrowRight, ExternalLink, IndianRupee, CreditCard, Wallet
+  CheckCircle2 as SuccessIcon, ArrowRight, ExternalLink, IndianRupee, CreditCard, Wallet,
+  Network
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -62,6 +63,15 @@ export default function Dashboard() {
   const [pinInput, setPinInput] = useState('');
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const { toast } = useToast();
+
+  // Global class sync for Ghost Mode
+  useEffect(() => {
+    if (isGhostMode) {
+      document.documentElement.classList.add('ghost-active');
+    } else {
+      document.documentElement.classList.remove('ghost-active');
+    }
+  }, [isGhostMode]);
 
   // WhatsApp Pairing State
   const [isWADialogOpen, setIsWADialogOpen] = useState(false);
@@ -361,7 +371,7 @@ export default function Dashboard() {
   return (
     <div className={cn(
       "min-h-screen transition-all duration-700 p-6 text-white overflow-x-hidden",
-      isGhostMode && "ghost-active bg-red-950/5 shadow-[inset_0_0_300px_rgba(255,0,0,0.1)]"
+      isGhostMode && "bg-red-950/5 shadow-[inset_0_0_300px_rgba(255,0,0,0.1)]"
     )}>
       {isGhostMode && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
@@ -821,8 +831,4 @@ function StatCard({ title, value, icon, sub }: { title: string, value: string, i
       </CardContent>
     </Card>
   );
-}
-
-function UITooltipProvider({ children }: { children: React.ReactNode }) {
-  return <TooltipProvider delayDuration={0}>{children}</TooltipProvider>;
 }
