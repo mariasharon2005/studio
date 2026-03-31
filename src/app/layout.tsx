@@ -19,7 +19,7 @@ export default function RootLayout({
         {/* Animated Cybercurrency Background */}
         <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden bg-[#1A1B26]">
           <div 
-            className="absolute inset-0 bg-[url('https://picsum.photos/seed/crypto-hifi/1920/1080')] bg-cover bg-center bg-fixed transition-all duration-700 filter brightness-[0.4] contrast-[1.1] scale-[1.1] animate-subtle-zoom [.ghost-active_&]:grayscale-[100%] [.ghost-active_&]:brightness-[0.3]"
+            className="absolute inset-0 bg-[url('https://picsum.photos/seed/crypto-hifi/1920/1080')] bg-cover bg-center bg-fixed transition-all duration-700 filter brightness-[0.4] contrast-[1.1] scale-[1.1] animate-subtle-zoom"
             data-ai-hint="blockchain network"
           ></div>
           {/* Tokyo Night Gradient Layer */}

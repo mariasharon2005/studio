@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from 'react';
@@ -32,7 +31,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
     }, 600);
 
     return () => clearInterval(interval);
-  }, [onComplete]);
+  }, [onComplete, bootMessages.length]);
 
   return (
     <div className="fixed inset-0 bg-[#050505] flex flex-col items-center justify-center z-50 p-6 cyber-grid">

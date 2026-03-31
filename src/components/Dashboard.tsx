@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -35,7 +34,6 @@ import { dispatchReport } from '@/app/actions/report-actions';
 import Lottie from 'lottie-react';
 import Logo from './Logo';
 
-// Dummy Lottie for "Mail Sent" simulation
 const mailSentAnimation = {
   v: "5.5.7",
   fr: 60,
@@ -102,7 +100,7 @@ export default function Dashboard() {
       totalInterest: Math.round(totalInterest),
       interestRatio: Math.round((totalInterest / totalPayable) * 100)
     };
-  }, [loanPrincipal, loanTenure]);
+  }, [loanPrincipal, loanTenure, monthlyRate]);
 
   useEffect(() => {
     if (isGhostMode) {
@@ -219,12 +217,10 @@ export default function Dashboard() {
       const pdfBlob = doc.output('blob');
       
       try {
-        // Upload to Firebase Storage
         const storageRef = ref(storage, `reports/${user?.uid}/${Date.now()}_report.pdf`);
         const uploadResult = await uploadBytes(storageRef, pdfBlob);
         const pdfUrl = await getDownloadURL(uploadResult.ref);
 
-        // Dispatch via Server Action
         await dispatchReport({
           email: user?.email || '',
           pdfUrl,
@@ -527,7 +523,7 @@ export default function Dashboard() {
       </div>
 
       <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
-        <DialogContent className="bg-[#1A1B26]/95 backdrop-blur-3xl border-primary/30 text-foreground glass-card max-sm">
+        <DialogContent className="bg-[#1A1B26]/95 backdrop-blur-3xl border-primary/30 text-foreground glass-card max-w-sm">
           <DialogHeader className="items-center text-center">
             <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6 border border-primary/20">
               <Fingerprint className="w-10 h-10 text-primary animate-pulse" />
@@ -580,7 +576,7 @@ export default function Dashboard() {
                   <Progress value={(qrRefreshTimer / 20) * 100} className="h-1 bg-white/10" />
                 </div>
                 <p className="text-[9px] text-muted-foreground mt-4 leading-relaxed uppercase">
-                  Open WhatsApp {'\u003E'} Settings {'\u003E'} Linked Devices {'\u003E'} Link a Device {'\u003E'} Link with phone number instead
+                  Open WhatsApp {'>'} Settings {'>'} Linked Devices {'>'} Link a Device {'>'} Link with phone number instead
                 </p>
                 <div className="flex items-center justify-center gap-2 text-[10px] text-secondary">
                   <Loader2 className="w-3 h-3 animate-spin" /> REFRESHING IN {qrRefreshTimer}S
@@ -598,7 +594,6 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Syncing Report Modal */}
       <Dialog open={isExporting} onOpenChange={() => {}}>
         <DialogContent className="bg-[#1A1B26]/95 backdrop-blur-3xl border-accent/30 text-foreground glass-card max-w-sm">
           <div className="flex flex-col items-center py-10 space-y-6 text-center">
@@ -618,7 +613,6 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Success Animation Overlay */}
       {showSuccessAnimation && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl">
           <div className="flex flex-col items-center animate-in zoom-in-50 duration-500">

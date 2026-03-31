@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import SplashScreen from './SplashScreen';
 import Register from './Register';
 import Login from './Login';
@@ -20,21 +20,21 @@ export default function SentinelOps() {
     }
   }, [user, isUserLoading, currentView]);
 
-  const handleSplashComplete = () => {
+  const handleSplashComplete = useCallback(() => {
     if (user) {
       setCurrentView('BIOMETRIC');
     } else {
       setCurrentView('LOGIN');
     }
-  };
+  }, [user]);
 
-  const handleAuthSuccess = () => {
+  const handleAuthSuccess = useCallback(() => {
     setCurrentView('BIOMETRIC');
-  };
+  }, []);
 
-  const handleBiometricSuccess = () => {
+  const handleBiometricSuccess = useCallback(() => {
     setCurrentView('DASHBOARD');
-  };
+  }, []);
 
   return (
     <div className="min-h-screen">
