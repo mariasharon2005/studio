@@ -4,8 +4,8 @@ import { FirebaseClientProvider } from '@/firebase';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'Sentinel-Ops | Cloud FinOps',
-  description: 'AI-Powered Cloud Cost Optimization & Carbon Tracking',
+  title: 'Sentinel-Ops | Tokyo Night Cloud FinOps',
+  description: 'AI-Powered Cloud Cost Optimization & Infrastructure Financing',
 };
 
 export default function RootLayout({
@@ -15,20 +15,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased bg-[#050505] text-foreground selection:bg-primary selection:text-black min-h-screen overflow-x-hidden" suppressHydrationWarning>
+      <body className="antialiased bg-[#1A1B26] text-foreground selection:bg-primary selection:text-black min-h-screen overflow-x-hidden" suppressHydrationWarning>
         {/* Animated Cybercurrency Background */}
-        <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden bg-black">
+        <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden bg-[#1A1B26]">
           <div 
-            className="absolute inset-0 bg-[url('https://picsum.photos/seed/crypto-hifi/1920/1080')] bg-cover bg-center bg-fixed transition-all duration-700 filter brightness-[0.5] contrast-[1.2] scale-[1.5] md:scale-110 animate-subtle-zoom [.ghost-active_&]:grayscale-[100%] [.ghost-active_&]:invert-[10%]"
+            className="absolute inset-0 bg-[url('https://picsum.photos/seed/crypto-hifi/1920/1080')] bg-cover bg-center bg-fixed transition-all duration-700 filter brightness-[0.4] contrast-[1.1] scale-[1.1] animate-subtle-zoom [.ghost-active_&]:grayscale-[100%] [.ghost-active_&]:brightness-[0.3]"
             data-ai-hint="blockchain network"
           ></div>
-          {/* HiFi Overlay Layer */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/90 via-black/40 to-black/90"></div>
+          {/* Tokyo Night Gradient Layer */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#1A1B26]/95 via-transparent to-[#1A1B26]/95"></div>
           <div className="absolute inset-0 cyber-grid opacity-20"></div>
           
           {/* Dynamic Glow Orbs */}
-          <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] animate-pulse-slow"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-secondary/10 rounded-full blur-[120px] animate-pulse-slow delay-700"></div>
+          <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[150px] animate-pulse-slow"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-accent/5 rounded-full blur-[150px] animate-pulse-slow delay-700"></div>
         </div>
 
         <FirebaseClientProvider>

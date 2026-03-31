@@ -4,33 +4,33 @@
 
 @layer base {
   :root {
-    --background: 0 0% 2%;
-    --foreground: 142 70% 70%; /* Light Neon Green */
-    --card: 0 0% 3.9%;
-    --card-foreground: 142 70% 70%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 142 70% 70%;
-    --primary: 142 100% 50%; /* Neon Green */
-    --primary-foreground: 0 0% 2%;
-    --secondary: 142 80% 30%; /* Deep Green */
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 142 20% 60%;
-    --accent: 142 100% 50%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 142 100% 50%;
-    --radius: 0.75rem;
+    --background: 234 18% 13%; /* #1A1B26 */
+    --foreground: 230 71% 85%; /* #C0CAF5 - Cloud White */
+    --card: 234 21% 19%; /* #24283B - Storm Base */
+    --card-foreground: 230 71% 85%;
+    --popover: 234 21% 19%;
+    --popover-foreground: 230 71% 85%;
+    --primary: 221 91% 72%; /* #7AA2F7 - Sky Blue */
+    --primary-foreground: 234 18% 13%;
+    --secondary: 227 37% 71%; /* #9AA5CE - Storm Blue */
+    --secondary-foreground: 230 71% 85%;
+    --muted: 234 21% 19%;
+    --muted-foreground: 227 37% 71%;
+    --accent: 261 85% 79%; /* #BB9AF7 - Purple */
+    --accent-foreground: 234 18% 13%;
+    --destructive: 349 89% 72%; /* #F7768E - Tokyo Red */
+    --destructive-foreground: 230 71% 85%;
+    --border: 221 91% 72% / 0.1;
+    --input: 234 21% 19%;
+    --ring: 221 91% 72%;
+    --radius: 1rem;
   }
 
   .ghost-active {
-    --primary: 0 100% 50% !important; /* Stealth Red */
-    --accent: 0 100% 50% !important;
-    --ring: 0 100% 50% !important;
-    --foreground: 0 100% 80% !important;
+    --primary: 349 89% 72% !important; /* #F7768E - Tokyo Red */
+    --accent: 349 89% 72% !important;
+    --ring: 349 89% 72% !important;
+    --foreground: 349 100% 85% !important;
   }
 }
 
@@ -39,7 +39,7 @@
     @apply border-border tracking-tight;
   }
   body {
-    @apply bg-[#050505] text-foreground font-sans transition-colors duration-500 text-base antialiased;
+    @apply bg-background text-foreground font-sans transition-colors duration-500 text-base antialiased;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold uppercase tracking-tighter;
@@ -50,7 +50,17 @@
 }
 
 .glass-card {
-  @apply backdrop-blur-[12px] bg-white/[0.05] border border-white/[0.1] shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] saturate-[150%];
+  background: rgba(36, 40, 59, 0.6);
+  backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(122, 162, 247, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  transition: backdrop-filter 0.5s ease-in-out, background 0.5s ease-in-out;
+}
+
+.ghost-active .glass-card {
+  background: rgba(36, 40, 59, 0.8);
+  backdrop-filter: blur(20px) saturate(100%);
+  border-color: rgba(247, 118, 142, 0.2);
 }
 
 .neon-border {
@@ -63,15 +73,15 @@
 }
 
 .cyber-grid {
-  background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(122, 162, 247, 0.05) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(122, 162, 247, 0.05) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
 @keyframes subtle-zoom {
-  0% { transform: scale(1.1); }
-  50% { transform: scale(1.15); }
-  100% { transform: scale(1.1); }
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 
 .animate-subtle-zoom {
@@ -79,20 +89,28 @@
 }
 
 @keyframes pulse-slow {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.1); }
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
 }
 
 .animate-pulse-slow {
   animation: pulse-slow 10s ease-in-out infinite;
 }
 
-@keyframes ghost-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.4); }
-  70% { box-shadow: 0 0 0 20px rgba(255, 0, 0, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+@keyframes boot-line {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
-.animate-ghost-pulse {
-  animation: ghost-pulse 2s infinite;
+.animate-boot-line {
+  animation: boot-line 2s ease-in-out infinite;
+}
+
+/* Tokyo Night Button Glows */
+.btn-tokyo {
+  @apply transition-all duration-300;
+}
+.btn-tokyo:hover {
+  box-shadow: 0 0 20px hsla(var(--accent), 0.4);
+  transform: translateY(-1px);
 }

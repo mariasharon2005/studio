@@ -62,16 +62,16 @@ export default function Login({ onSuccess, onToggleRegister }: LoginProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="max-w-md w-full p-10 rounded-3xl border border-primary/20 bg-black/80 backdrop-blur-3xl shadow-[0_0_50px_rgba(0,191,255,0.1)] z-10 glass-card">
+      <div className="max-w-md w-full p-10 rounded-3xl z-10 glass-card">
         <div className="text-center mb-10 flex flex-col items-center">
           <Logo size="lg" className="mb-6" />
-          <h2 className="text-3xl font-semibold text-white mb-2 tracking-tight">SENTINEL LOGIN</h2>
-          <p className="text-muted-foreground text-[11px] uppercase tracking-widest">Accessing Mainframe...</p>
+          <h2 className="text-3xl font-semibold text-foreground mb-2 tracking-tight">SENTINEL LOGIN</h2>
+          <p className="text-secondary text-[11px] uppercase tracking-widest">Accessing Mainframe...</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="relative group">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary group-focus-within:text-secondary transition-colors" />
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary group-focus-within:text-accent transition-colors" />
             <Input
               type="email"
               value={formData.email}
@@ -82,7 +82,7 @@ export default function Login({ onSuccess, onToggleRegister }: LoginProps) {
           </div>
 
           <div className="relative group">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary group-focus-within:text-secondary transition-colors" />
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary group-focus-within:text-accent transition-colors" />
             <Input
               type="password"
               value={formData.password}
@@ -94,7 +94,7 @@ export default function Login({ onSuccess, onToggleRegister }: LoginProps) {
 
           <Button 
             disabled={isSubmitting}
-            className="w-full h-14 bg-primary text-black font-semibold tracking-tight uppercase transition-all transform hover:scale-[1.02] shadow-[0_0_30px_rgba(0,191,255,0.2)] rounded-2xl"
+            className="btn-tokyo w-full h-14 bg-primary text-black font-semibold tracking-tight uppercase shadow-[0_0_30px_rgba(122,162,247,0.2)] rounded-2xl"
           >
             {isSubmitting ? 'DECRYPTING...' : 'ESTABLISH LINK'}
             <ArrowRight className="ml-2 w-4 h-4" />
@@ -104,7 +104,7 @@ export default function Login({ onSuccess, onToggleRegister }: LoginProps) {
         <div className="mt-10 text-center">
           <button 
             onClick={onToggleRegister}
-            className="text-[11px] text-muted-foreground uppercase tracking-widest hover:text-primary transition-colors flex items-center justify-center mx-auto gap-2 font-semibold"
+            className="text-[11px] text-secondary uppercase tracking-widest hover:text-primary transition-colors flex items-center justify-center mx-auto gap-2 font-semibold"
           >
             <UserPlus className="w-3 h-3" /> New Node? Initialize Module
           </button>
