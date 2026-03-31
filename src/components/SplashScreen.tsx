@@ -1,6 +1,8 @@
+
 "use client"
 
 import { useEffect, useState } from 'react';
+import Logo from './Logo';
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -35,10 +37,11 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   return (
     <div className="fixed inset-0 bg-[#050505] flex flex-col items-center justify-center z-50 p-6 cyber-grid">
       <div className="max-w-xl w-full">
-        <div className="mb-12 text-center">
-          <h1 className="text-5xl font-headline text-primary neon-text mb-2 animate-pulse">SENTINEL-OPS</h1>
-          <div className="h-1 w-full bg-muted overflow-hidden">
-            <div className="h-full bg-primary animate-boot-line"></div>
+        <div className="mb-12 text-center flex flex-col items-center">
+          <Logo size="xl" className="mb-8" />
+          <h1 className="text-5xl font-headline text-primary neon-text mb-2 animate-pulse tracking-[0.2em]">SENTINEL-OPS</h1>
+          <div className="h-1 w-full bg-muted overflow-hidden max-w-xs mt-4">
+            <div className="h-full bg-primary animate-[boot-line_4s_ease-in-out_infinite]"></div>
           </div>
         </div>
         
