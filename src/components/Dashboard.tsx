@@ -116,8 +116,6 @@ export default function Dashboard() {
 
   const [loanPrincipal, setLoanPrincipal] = useState(50000);
   const [loanTenure, setLoanTenure] = useState(12);
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState<'IDLE' | 'PAYING' | 'SUCCESS'>('IDLE');
 
   const [isListening, setIsListening] = useState(false);
   const [voiceLog, setVoiceLog] = useState<string[]>([]);
@@ -679,7 +677,7 @@ export default function Dashboard() {
                   <span className="text-5xl font-mono text-primary neon-text tracking-widest block">{pairingCode}</span>
                 </div>
                 <p className="text-[9px] text-muted-foreground mt-4 leading-relaxed uppercase">
-                  Open WhatsApp {'>'} Settings {'>'} Linked Devices {'>'} Link a Device {'>'} Link with phone instead
+                  Open WhatsApp {' > '} Settings {' > '} Linked Devices {' > '} Link a Device {' > '} Link with phone instead
                 </p>
               </div>
             )}
