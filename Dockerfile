@@ -1,3 +1,4 @@
+
 FROM node:20-alpine AS base
 
 # 1. Install dependencies only when needed
@@ -5,9 +6,8 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm ci
 
 # 2. Rebuild the source code only when needed
 FROM base AS builder
@@ -49,7 +49,7 @@ USER nextjs
 EXPOSE 3000
 
 ENV PORT 3000
+# set hostname to localhost
+ENV HOSTNAME "0.0.0.0"
 
-# server.js is created by next build from the standalone output
-# https://nextjs.org/docs/pages/api-reference/next-config-js/output
 CMD ["node", "server.js"]
