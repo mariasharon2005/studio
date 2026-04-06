@@ -14,6 +14,21 @@ An elite, AI-powered Infrastructure Analytics & Financing platform designed for 
 - **Stealth Protocol (Ghost Mode)**: A one-tap "Tokyo Red" shift that masks all sensitive PII and dispatch headers.
 - **Data-as-Art**: System health is communicated through abstract imagery rather than plain text to prevent over-the-shoulder data breaches.
 
+## 🐳 Docker Deployment
+To run the project in a container:
+
+1. **Build the image**:
+   ```bash
+   docker build -t sentinel-ops .
+   ```
+
+2. **Run the container**:
+   ```bash
+   docker run -p 3000:3000 sentinel-ops
+   ```
+
+The application will be accessible at `http://localhost:3000`.
+
 ## 📈 Key Features
 1. **Predictive Cash Flow**: Moving-average regression to project 30-day infrastructure burn.
 2. **Dual-Dispatch System**: Simultaneous report syncing across Email, WhatsApp, and Telegram nodes.

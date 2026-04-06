@@ -1,11 +1,10 @@
 node_modules
 .next
-out
-build
+public
+README.md
+Dockerfile
+.dockerignore
 .git
 .gitignore
-.dockerignore
-Dockerfile
-docker-compose.yml
-README.md
-npm-debug.log
+.env
+.env.local
