@@ -15,7 +15,7 @@ An elite, AI-powered Infrastructure Analytics & Financing platform designed for 
 - **Data-as-Art**: System health is communicated through abstract imagery rather than plain text to prevent over-the-shoulder data breaches.
 
 ## 🐳 Docker Deployment
-To run the project in a container:
+To run the project in a container, use the following commands:
 
 1. **Build the image**:
    ```bash
