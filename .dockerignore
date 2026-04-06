@@ -1,7 +1,11 @@
 node_modules
 .next
+out
+build
 .git
+*.pdf
+.env
+.idx
+apphosting.yaml
 Dockerfile
 .dockerignore
-.idx
-README.md

@@ -1,23 +1,27 @@
 { pkgs, ... }: {
-  channel = "stable-24.11";
+  channel = "stable-23.11";
   packages = [
     pkgs.nodejs_20
     pkgs.docker
   ];
+  services.docker.enable = true;
   idx = {
     extensions = [
-      "ms-azuretools.vscode-docker"
+      "christian-kohler.path-intellisense"
     ];
+    workspace = {
+      onCreate = {
+        npm-install = "npm install";
+      };
+    };
     previews = {
       enable = true;
       previews = {
         web = {
-          command = [ "npm" "run" "dev" "--" "--port" "$PORT" "--hostname" "0.0.0.0" ];
+          command = ["npm" "run" "dev" "--" "--port" "$PORT" "--hostname" "0.0.0.0"];
           manager = "web";
         };
       };
     };
   };
-  # Enable Docker service in the environment
-  services.docker.enable = true;
 }
