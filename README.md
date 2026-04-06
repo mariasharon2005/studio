@@ -1,34 +1,70 @@
+# 🛰️ Sentinel-Ops: High-Fidelity FinOps & Stealth Analytics
+A 2026 Cybercurrency Infrastructure Suite with Predictive Intelligence
 
-# SENTINEL-OPS | Tokyo Night Cloud FinOps
+Sentinel-Ops is a production-ready Financial Operations (FinOps) dashboard built for the modern digital economy. It bridges the gap between Real-time Telemetry and Stealth Privacy, offering a "Tokyo Night" inspired command center for managing complex infrastructure settlements and predictive spend analysis.
 
-An elite, AI-powered Infrastructure Analytics & Financing platform designed for the 2026 Cloud Economy. This project serves as a High-Fidelity (HiFi) demonstration of modern FinOps, Security, and Fintech integration.
+## ⚡ Core Innovation Pillars
 
-## 🚀 2026 Tech Stack
-- **Frontend**: Next.js 15 (App Router), React 19, Tailwind CSS.
-- **UI Components**: ShadCN UI, Framer Motion (Orbital Physics).
-- **Backend/AI**: Google Genkit (Gemini 2.5).
-- **Database/Auth**: Firebase Firestore, Firebase Authentication.
-- **FinTech**: jsPDF (Report Generation), qrcode.react (UPI Gateway).
+### 1. The Ghost Protocol (Stealth Governance)
+Instead of a standard "Private Mode," Sentinel-Ops uses Semantic Intent Mapping.
+- **Steganographic Trigger**: The system listens for natural language "masks" (e.g., "The weather is looking cloudy today") via the Sentinel Terminal to silently toggle a high-security state.
+- **UI Obfuscation**: Instantly shifts the primary color palette to Tokyo Red (#F7768E) and masks sensitive PII (Personally Identifiable Information).
 
-## 🛡️ Security-First Architecture
-- **Biometric Kill-Switch**: Critical system states (Ghost Mode) are protected by WebAuthn/Biometric gateways.
-- **Stealth Protocol (Ghost Mode)**: A one-tap "Tokyo Red" shift that masks all sensitive PII and dispatch headers.
+### 2. Neural Forecaster (Predictive Analytics)
+- **Anomaly Detection**: Analyzes 6-month historical data to forecast "Infra Leakage" and spend spikes.
+- **Predictive Heatmap**: A pulsing, glassmorphism-based visualizer that transitions to Vibrating Violet (#BB9AF7) as the probability of a system anomaly exceeds 75%.
 
-## 🐳 Docker Deployment
-To run the project in a container:
+### 3. FinOps Node & Auto-Export
+- **Token-Gated UPI**: A secure payment uplink for infrastructure EMI settlements.
+- **Asynchronous Dispatch**: Upon payment success, the system automatically generates a branded PDF receipt and dispatches it via WhatsApp & Email using the Sentinel-Ops report engine.
 
-1. **Rebuild Environment**: If you are in Google IDX, click the **"Rebuild Environment"** button in the notification or top bar to enable the Docker service.
-2. **Build the image**:
-   ```bash
-   docker build -t sentinel-ops .
-   ```
-3. **Run the container**:
-   ```bash
-   docker run -p 3000:3000 sentinel-ops
-   ```
+### 4. Immutable Security Layer
+- **Biometric Kill-Switch**: Integrates the WebAuthn API to require a physical fingerprint or FaceID signature before terminating a stealth session or executing high-value transactions.
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+| :--- | :--- |
+| **Frontend** | Next.js 15, React 19, Framer Motion, Tailwind CSS |
+| **Design System** | Tokyo Night (Glassmorphism / Neon Accents) |
+| **Backend** | Node.js, NLP Intent Mapping, Genkit (AI) |
+| **Security** | WebAuthn API, Firebase Auth, Steganographic Logic |
+| **DevOps** | Docker, Standalone Build Output |
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Docker Desktop installed
+- Node.js v20+
+- A `.env` file containing your `FIREBASE_CONFIG`
+
+### Quick Start with Docker
+If you are using Google IDX, please click the **"Rebuild Environment"** button in the notification bar first to enable the Docker service.
+
+```bash
+# Build the image
+docker build -t sentinel-ops .
+
+# Run the container
+docker run -p 3000:3000 sentinel-ops
+```
 The application will be accessible at `http://localhost:3000`.
 
-## 🎓 Viva Implementation Notes
-- **EMI Formula**: Uses the standard Reducing Balance Method: `EMI = [P x R x (1+R)^N] / [(1+R)^N - 1]`.
-- **Ghost Logic**: Implemented via global CSS variable injection (`.ghost-active`) and React state-machine locks.
-- **NLP Intent**: Regex-based steganographic command mapping for "Cloudy" weather triggers in the Terminal.
+### Manual Installation
+```bash
+git clone https://github.com/your-username/sentinel-ops.git
+cd sentinel-ops
+npm install
+npm run dev
+```
+
+## 🛰️ System Architecture
+The application follows a Decoupled Micro-Frontend approach. The Sentinel Terminal acts as a headless interface layer, while the Core Load Monitor provides real-time telemetry on system resource reservation.
+
+## 🎓 Academic Context
+Developed as a Final Year BCA Project specializing in Data Analytics. This project demonstrates mastery over the full Software Development Life Cycle (SDLC), from UI/UX prototyping in Figma to containerized deployment.
+
+## 🤝 Contact & Support
+- **Developed by**: [Your Name]
+- **Location**: Bengaluru, India
+- **Project Submission Date**: May 14, 2026
