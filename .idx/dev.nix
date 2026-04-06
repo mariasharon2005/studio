@@ -1,4 +1,3 @@
-
 { pkgs, ... }: {
   channel = "stable-24.05";
   packages = [
@@ -6,21 +5,17 @@
     pkgs.docker
   ];
   services.docker.enable = true;
-  idx.previews = {
-    enable = true;
+  idx = {
+    extensions = [
+      "christian-kohler.path-intellisense"
+    ];
     previews = {
-      web = {
-        command = [
-          "npm"
-          "run"
-          "dev"
-          "--"
-          "--port"
-          "$PORT"
-          "--hostname"
-          "0.0.0.0"
-        ];
-        manager = "web";
+      enable = true;
+      previews = {
+        web = {
+          command = ["npm" "run" "dev" "--" "--port" "$PORT" "--hostname" "0.0.0.0"];
+          manager = "web";
+        };
       };
     };
   };
