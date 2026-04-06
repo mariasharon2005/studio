@@ -65,6 +65,6 @@ The application follows a Decoupled Micro-Frontend approach. The Sentinel Termin
 Developed as a Final Year BCA Project specializing in Data Analytics. This project demonstrates mastery over the full Software Development Life Cycle (SDLC), from UI/UX prototyping in Figma to containerized deployment.
 
 ## 🤝 Contact & Support
-- **Developed by**: [Your Name]
-- **Location**: Bengaluru, India
+- **Developed by**: P. MARIA SHARON
+- Reg No : 23BCNA41
 - **Project Submission Date**: May 14, 2026
