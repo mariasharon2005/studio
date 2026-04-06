@@ -3,7 +3,5 @@ node_modules
 .git
 Dockerfile
 .dockerignore
+.idx
 README.md
-npm-debug.log
-build
-dist
